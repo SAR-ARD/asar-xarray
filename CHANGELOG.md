@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1](https://github.com/Achaad/asar-xarray/compare/v1.0.0...v1.0.1) (2025-03-04)
+
+
+### Bug Fixes
+
+* additional permissions ([fbabdef](https://github.com/Achaad/asar-xarray/commit/fbabdef684feb1eca5709ddaf8768893e5bec3e5))
+
 # 1.0.0 (2025-03-04)
 
 
