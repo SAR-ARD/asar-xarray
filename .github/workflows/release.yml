@@ -31,4 +31,4 @@ jobs:
           branches: |
             ['master']
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_RELEASE_ACTION }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
