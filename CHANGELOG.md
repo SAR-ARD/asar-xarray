@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.1.0](https://github.com/Achaad/asar-xarray/compare/v1.0.1...v1.1.0) (2025-03-04)
+
+
+### Features
+
+* Create basic python module skeleton: ([#6](https://github.com/Achaad/asar-xarray/issues/6)) ([#9](https://github.com/Achaad/asar-xarray/issues/9)) ([601f969](https://github.com/Achaad/asar-xarray/commit/601f969b271f43bf14cf644422da25724e614051)), closes [#3](https://github.com/Achaad/asar-xarray/issues/3)
+
 ## [1.0.1](https://github.com/Achaad/asar-xarray/compare/v1.0.0...v1.0.1) (2025-03-04)
 
 
