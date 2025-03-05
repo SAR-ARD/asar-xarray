@@ -16,6 +16,8 @@ This python library reads ESR/ASAR products and converts them into [Xarray](http
 
 ## Contribution
 
+### Branching model
+
 Below are listed basic contribution rules as well as description of the preferred branch system.
 
 The development should be performed on issue branches, and new commits to the master branch should be added
@@ -38,6 +40,13 @@ All the merge commits should be prepended with a tag from the list below _(e.g. 
 | build    | Changes which modify the application build or dependencies |
 | ci       | Changes to the CI/CD configuration                         |
 | revert   | Previous commit reverts                                    |
+
+### git lfs
+The project uses git lfs for tracking satellite imagery. In order to use git lfs, execute 
+`git lfs install`. The repository is already configured to track _.N1_ files.
+
+If you need to track any other large files, execute `git lfs track "*.${extension}"`.
+
 
 ## Maintainers:
 
