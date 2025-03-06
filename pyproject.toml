@@ -1,0 +1,45 @@
+[project]
+name = 'asar_xarray'
+version = '1.1.0'
+description = 'Synthetic Aperture Radar (SAR) Level-1 python mapper of ESR/ASAR products.'
+authors = [
+    { name = 'Anton Perepelenko', email = 'anton.perepelenko@cgi.com' },
+    { name = 'Priit Pender', email = 'priit@alloca.ee' }
+]
+maintainers = [
+    { name = 'Anton Perepelenko', email = 'anton.perepelenko@cgi.com' },
+    { name = 'Priit Pender', email = 'priit@alloca.ee' }
+]
+classifiers = [
+    'Development Status :: 2 - Pre-Alpha',
+    'Environment :: Console',
+    'Intended Audience :: Science/Research',
+    'Topic :: Scientific/Engineering :: GIS'
+]
+readme = 'README.md'
+license = { text = 'MIT' } # TODO: to be verified (#5)
+keywords = ['ASAR', 'ENVISAT', 'xarray', 'earth-observation', 'remote-sensing', 'radar', 'satellite-imagery', 'sar',
+    'synthetic-aperture-radar']
+requires-python = '>=3.12'
+dependencies = [
+    'xarray>=2025.1.0',
+    'gdal>=3.10.0',
+    'numpy>=2.2.0'
+]
+
+[project.optional-dependencies]
+test = [
+    'pytest>=8.3.0'
+]
+
+[project.urls]
+repository = 'https://github.com/Achaad/asar-xarray'
+'Bug Tracker' = 'https://github.com/Achaad/asar-xarray/issues'
+
+
+[project.entry-points.'xarray.backends']
+asar = 'asar_xarray.xarray_backends:AsarBackend'
+
+[build-system]
+requires = ['setuptools']
+build-backend = 'setuptools.build_meta'
