@@ -11,8 +11,6 @@ jobs:
   build:
     name: Build and analyze
     runs-on: ubuntu-latest
-#    container:
-#      image: continuumio/miniconda:latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,14 +20,7 @@ jobs:
           activate-environment: asar-xarray_env
           environment-file: environment.yml
           python-version: 3.12
-#          condarc-file: etc/example-condarc.yml
           auto-activate-base: false
-#      - name: Setup Python
-#        uses: actions/setup-python@v2
-#        with:
-#          python-version: ${{ matrix.python }}
-      - name: Debug info
-        run: type pip && which pip
       - name: Install tox and any other packages
         run: pip install tox-conda
       - name: Run tox
