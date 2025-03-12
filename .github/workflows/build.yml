@@ -11,17 +11,19 @@ jobs:
   build:
     name: Build and analyze
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
         with:
+          lfs: true
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      - name: Setup Python
-        uses: actions/setup-python@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
-          python-version: ${{ matrix.python }}
+          activate-environment: asar-xarray_env
+          environment-file: environment.yml
+          python-version: 3.12
+          auto-activate-base: false
       - name: Install tox and any other packages
-        run: pip install tox
+        run: pip install tox-conda
       - name: Run tox
         run: tox -e py
       - uses: SonarSource/sonarqube-scan-action@v4

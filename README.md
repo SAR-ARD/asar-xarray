@@ -47,6 +47,8 @@ The project uses git lfs for tracking satellite imagery. In order to use git lfs
 
 If you need to track any other large files, execute `git lfs track "*.${extension}"`.
 
+### Issue tracking
+When the development on the issue begins, tag _In progress_ should be added to it.
 
 ## Maintainers:
 
