@@ -1,0 +1,10 @@
+name: asar-xarray_env
+channels:
+  - conda-forge
+dependencies:
+  - python>=3.12
+  - gdal>=3.10
+  - libgdal>=3.10
+  - numpy>=2.2.0
+  - xarray>=2025.1.0
+  - pip
