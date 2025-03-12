@@ -11,7 +11,7 @@ def get_gdal_dataset(filepath: str) -> gdal.Dataset:
     :return: Opened dataset
     """
 
-    dataset: gdal.Dataset = gdal.Open(filepath)
+    # dataset: gdal.Dataset = gdal.Open(filepath)
     dataset: gdal.Dataset = gdal.GetDriverByName('ESAT').Open(filepath)
     driver: gdal.Driver = dataset.GetDriver()
     print(driver.GetName())
