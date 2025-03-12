@@ -1,8 +1,12 @@
+import os.path
+
 import xarray as xr
 
+from tests.conftest import resources_dir
 
-def test_open_dataset():
-    file = 'resources/ASA_IMS_1PNESA20040109_194924_000000182023_00157_09730_0000.N1'
+
+def test_open_dataset(resources_dir):
+    file = os.path.join(resources_dir, 'ASA_IMS_1PNESA20040109_194924_000000182023_00157_09730_0000.N1')
     dataset = xr.open_dataset(file, engine='asar')
     assert dataset is not None
     assert dataset.dims['x'] == 5174
