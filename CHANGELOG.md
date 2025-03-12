@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.2.0](https://github.com/Achaad/asar-xarray/compare/v1.1.0...v1.2.0) (2025-03-12)
+
+
+### Features
+
+* add initial support for opening ASAR files ([#24](https://github.com/Achaad/asar-xarray/issues/24)) ([33a74c5](https://github.com/Achaad/asar-xarray/commit/33a74c55016226e5ab9b8d5711fe536e5f487d71))
+
 # [1.1.0](https://github.com/Achaad/asar-xarray/compare/v1.0.1...v1.1.0) (2025-03-04)
 
 
