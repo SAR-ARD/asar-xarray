@@ -3,7 +3,7 @@ import os.path
 from asar_xarray import asar
 
 
-def test_open_asar_dataset(resources_dir):
+def test_open_asar_dataset(resources_dir: str) -> None:
     filepath = os.path.join(resources_dir, 'ASA_IMS_1PNESA20040109_194924_000000182023_00157_09730_0000.N1')
     dataset = asar.open_asar_dataset(filepath)
     assert dataset is not None

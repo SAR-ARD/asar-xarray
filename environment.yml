@@ -8,3 +8,4 @@ dependencies:
   - numpy>=2.2.0
   - xarray>=2025.1.0
   - pip
+  - requests>=2.32
