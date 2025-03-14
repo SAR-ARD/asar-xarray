@@ -39,6 +39,7 @@ def download_resources(external_resources: dict[str, str], resources_dir: str) -
     :param resources_dir: Fixture specifying where to download resources.
     :return: None.
     """
+    os.makedirs(resources_dir, exist_ok=True)
     for resource, link in external_resources.items():
         resource_file = os.path.join(resources_dir, resource)
         if os.path.exists(resource_file):
@@ -72,6 +73,7 @@ def _download_s3_resource(resource: str, destination: str) -> None:
 
     # add verify=False if working behind ZScaler
     s3 = boto3.client('s3', aws_access_key_id=s3_access_key, aws_secret_access_key=s3_secret_key,
-                      endpoint_url=endpoint_url
+                      endpoint_url=endpoint_url,
+                      verify=False
                       )
     s3.download_file(bucket, key, destination)
