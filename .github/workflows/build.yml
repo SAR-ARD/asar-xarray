@@ -26,8 +26,8 @@ jobs:
         run: pip install tox-conda
       - name: Run tox
         env:
-          S3_ACCESS_KEY = ${{ secrets.S3_ACCESS_KEY }}
-          S3_SECRET_KEY = ${{ secrets.S3_SECRET_KEY }}
+          S3_ACCESS_KEY: ${{ secrets.S3_ACCESS_KEY }}
+          S3_SECRET_KEY: ${{ secrets.S3_SECRET_KEY }}
         run: tox -e py
       - uses: SonarSource/sonarqube-scan-action@v4
         env:
