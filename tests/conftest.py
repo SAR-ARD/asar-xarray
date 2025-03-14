@@ -63,7 +63,7 @@ def _download_general_resource(resource: str, destination: str) -> None:
 
 def _download_s3_resource(resource: str, destination: str) -> None:
     s3_access_key = os.environ['S3_ACCESS_KEY']
-    s3_secret_key = os.getenv['S3_SECRET_KEY']
+    s3_secret_key = os.environ['S3_SECRET_KEY']
     endpoint_url = 'https://s3.achaad.eu/'
 
     parsed_url = urlparse(resource)
