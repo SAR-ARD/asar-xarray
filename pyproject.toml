@@ -23,9 +23,10 @@ keywords = ['ASAR', 'ENVISAT', 'xarray', 'earth-observation', 'remote-sensing', 
 requires-python = '>=3.12'
 dependencies = [
     'xarray>=2025.1.0',
-    'requests>=2.32',
+    'requests>=2.32.0',
     'gdal>=3.10.0',
-    'numpy>=2.2.0'
+    'numpy>=2.2.0',
+    'boto3>=1.37.0'
 ]
 
 [project.optional-dependencies]
