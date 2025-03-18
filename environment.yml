@@ -1,4 +1,4 @@
-name: asar-xarray_env
+name: asar-xarray-env
 channels:
   - conda-forge
 dependencies:

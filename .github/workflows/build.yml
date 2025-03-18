@@ -11,6 +11,9 @@ jobs:
   build:
     name: Build and analyze
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -l {0}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -18,10 +21,10 @@ jobs:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
       - uses: conda-incubator/setup-miniconda@v3
         with:
-          activate-environment: asar-xarray_env
+          activate-environment: asar-xarray-env
           environment-file: environment.yml
           python-version: 3.12
-          auto-activate-base: true
+          auto-activate-base: false
       - name: Install tox and any other packages
         run: pip install tox-conda mypy lxml
       - name: Run tox
@@ -30,7 +33,7 @@ jobs:
           S3_SECRET_KEY: ${{ secrets.S3_SECRET_KEY }}
         run: tox -e py
       - name: Run mypy
-        run: conda activate asar-xarray_env && mypy --cobertura-xml-report . .
+        run: mypy --cobertura-xml-report . .
       - uses: SonarSource/sonarqube-scan-action@v4
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
