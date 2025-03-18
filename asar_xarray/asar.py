@@ -1,13 +1,16 @@
-from typing import Dict
+import os
+from typing import Dict, Any
 
 import xarray as xr
 import numpy as np
 from osgeo import gdal
+from xarray.backends import AbstractDataStore
+from xarray.core.types import ReadBuffer
 
 from asar_xarray import reader
 
 
-def get_attributes(gdal_dataset: gdal.Dataset) -> Dict[str, any]:
+def get_attributes(gdal_dataset: gdal.Dataset) -> Dict[str, Any]:
     """
     Build xarray attributes from gdal dataset to be used in xarray.
 
@@ -19,7 +22,9 @@ def get_attributes(gdal_dataset: gdal.Dataset) -> Dict[str, any]:
     return attributes
 
 
-def open_asar_dataset(filepath: str) -> xr.Dataset:
+def open_asar_dataset(filepath: str | os.PathLike[Any] | ReadBuffer[Any] | AbstractDataStore) -> xr.Dataset:
+    if not isinstance(filepath, str):
+        raise NotImplementedError(f'Filepath type {type(filepath)} is not supported')
     gdal_dataset: gdal.Dataset = reader.get_gdal_dataset(filepath)
     attributes = get_attributes(gdal_dataset)
     data = gdal_dataset.ReadAsArray()

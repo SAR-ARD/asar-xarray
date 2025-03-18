@@ -30,7 +30,7 @@ jobs:
           S3_SECRET_KEY: ${{ secrets.S3_SECRET_KEY }}
         run: tox -e py
       - name: Run mypy
-        run: mypy --cobertura-xml-report . . || true
+        run: mypy --cobertura-xml-report . .
       - uses: SonarSource/sonarqube-scan-action@v4
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
