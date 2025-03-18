@@ -23,7 +23,7 @@ jobs:
           python-version: 3.12
           auto-activate-base: false
       - name: Install tox and any other packages
-        run: pip install tox-conda
+        run: pip install tox-conda mypy lxml
       - name: Run tox
         env:
           S3_ACCESS_KEY: ${{ secrets.S3_ACCESS_KEY }}
