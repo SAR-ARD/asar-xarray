@@ -21,7 +21,7 @@ jobs:
           activate-environment: asar-xarray_env
           environment-file: environment.yml
           python-version: 3.12
-          auto-activate-base: false
+          auto-activate-base: true
       - name: Install tox and any other packages
         run: pip install tox-conda mypy lxml
       - name: Run tox
