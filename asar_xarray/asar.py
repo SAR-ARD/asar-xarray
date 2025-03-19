@@ -6,8 +6,8 @@ import numpy as np
 from osgeo import gdal
 from xarray.backends import AbstractDataStore
 from xarray.core.types import ReadBuffer
-
 from asar_xarray import reader
+from loguru import logger
 
 
 def get_attributes(gdal_dataset: gdal.Dataset) -> Dict[str, Any]:
@@ -25,6 +25,7 @@ def get_attributes(gdal_dataset: gdal.Dataset) -> Dict[str, Any]:
 def open_asar_dataset(filepath: str | os.PathLike[Any] | ReadBuffer[Any] | AbstractDataStore) -> xr.Dataset:
     if not isinstance(filepath, str):
         raise NotImplementedError(f'Filepath type {type(filepath)} is not supported')
+    logger.debug('Opening ASAR dataset %s', filepath)
     gdal_dataset: gdal.Dataset = reader.get_gdal_dataset(filepath)
     attributes = get_attributes(gdal_dataset)
     data = gdal_dataset.ReadAsArray()
