@@ -8,6 +8,11 @@ from xarray.backends import AbstractDataStore
 from xarray.core.types import ReadBuffer
 from asar_xarray import reader, utils
 from loguru import logger
+from datetime import datetime
+import re
+
+from asar_xarray.general_metadata import process_general_metadata
+from asar_xarray.records_metadata import process_records_metadata
 
 
 def get_attributes(gdal_dataset: gdal.Dataset) -> Dict[str, Any]:
@@ -17,10 +22,18 @@ def get_attributes(gdal_dataset: gdal.Dataset) -> Dict[str, Any]:
     :param gdal_dataset: Dataset with metadata
     :return: Dictionary with metadata attributes
     """
+
+    domains = gdal_dataset.GetMetadataDomainList()
+    # TODO(Anton): remove print statements
+    for domain in domains:
+        print("\n")
+        print(domain)
+        print(gdal_dataset.GetMetadata(domain))
     attributes = dict()
-    attributes['antenna_elevation_pattern'] = get_antenna_elevation_pattern(gdal_dataset)
+    process_general_metadata(gdal_dataset, attributes)
+    process_records_metadata(gdal_dataset, attributes)
+
     attributes['chirp_parameters'] = get_chirp_parameters(gdal_dataset)
-    attributes['orbit_state_vectors'] = get_orbit_state_vectors(gdal_dataset)
 
     return attributes
 
@@ -39,12 +52,6 @@ def open_asar_dataset(filepath: str | os.PathLike[Any] | ReadBuffer[Any] | Abstr
                                      }, attrs=attributes)
     return dataset
 
-def get_orbit_state_vectors(gdal_dataset: gdal.Dataset) -> dict[str, Any]:
-    return dict()
-
-def get_antenna_elevation_pattern(dataset: gdal.Dataset) -> dict[str, Any]:
-    return dict()
-
 
 def get_chirp_parameters(dataset: gdal.Dataset) -> dict[str, Any]:
     """
@@ -52,25 +59,58 @@ def get_chirp_parameters(dataset: gdal.Dataset) -> dict[str, Any]:
     :param dataset: ASAR dataset.
     :return: dictionary with chirp parameters.
     """
-    domains = dataset.GetMetadataDomainList()
-    # TODO(Anton): remove print statements
-    for domain in domains:
-        print("\n")
-        print(domain)
-        print(dataset.GetMetadata(domain))
-    print(dataset.GetMetadataDomainList())
     metadata = dataset.GetMetadata(domain='RECORDS')
     params = dict()
     # Non-float values
-    params['zero_doppler_time'] = utils.get_mjd(metadata.get('CHIRP_PARAMS_ADS_ZERO_DOPPLER_TIME'))
+    params['zero_doppler_time'] = utils.get_envisat_time(metadata.get('CHIRP_PARAMS_ADS_ZERO_DOPPLER_TIME'))
     params['attach_flag'] = bool(int(metadata.get('CHIRP_PARAMS_ADS_ATTACH_FLAG', '0')))
     params['beam_id'] = metadata.get('CHIRP_PARAMS_ADS_BEAM_ID')
     params['polarisation'] = metadata.get('CHIRP_PARAMS_ADS_POLAR')
     params['chirp'] = dict()
     for key, value in metadata.items():
         if 'CHIRP_PARAMS_ADS_CHIRP' in key:
-            new_key = key.replace('CHIRP_PARAMS_ADS_CHIRP_', '')
+            new_key = key.replace('CHIRP_PARAMS_ADS_CHIRP_', '').lower()
             params['chirp'][new_key] = float(value)
-        print(key, value)
+
+    params['elev_corr_factor'] = float(metadata.get('CHIRP_PARAMS_ADS_ELEV_CORR_FACTOR'))
+    params['cal_pulse_info'] = get_chirp_cal_pulse_info(metadata)
 
     return params
+
+
+def get_chirp_cal_pulse_info(metadata: dict[str, str]) -> list[dict]:
+    """
+    Parse calibration pulse information from metadata into list of dictionaries.
+
+    :param metadata: Dictionary containing metadata with CAL_PULSE_INFO entries
+    :return: List of dictionaries containing calibration pulse parameters
+    """
+    cal_info_dict = {}
+
+    for key, value in metadata.items():
+        if 'CAL_PULSE_INFO' not in key:
+            continue
+
+        # Split key into parts: idx and parameter
+        parts = key.split('.')
+        if len(parts) < 3:
+            continue
+
+        idx = parts[1]  # Get the index number
+        param = parts[2]  # Get parameter name
+
+        # Initialize dict for this index if not exists
+        if idx not in cal_info_dict:
+            cal_info_dict[idx] = {'index': idx}
+
+        # Convert values to float, handling multiple values
+        values = [float(v) for v in value.split()]
+
+        # Store single values directly, lists as lists
+        if len(values) == 1:
+            cal_info_dict[idx][param] = values[0]
+        else:
+            cal_info_dict[idx][param] = values
+
+    # Convert the dictionary of dictionaries to the list of dictionaries
+    return list(cal_info_dict.values())
