@@ -8,9 +8,8 @@ from xarray.backends import AbstractDataStore
 from xarray.core.types import ReadBuffer
 from asar_xarray import reader, utils
 from loguru import logger
-from datetime import datetime
-import re
 
+from asar_xarray.derived_subdatasets_metadata import process_derived_subdatasets_metadata
 from asar_xarray.general_metadata import process_general_metadata
 from asar_xarray.records_metadata import process_records_metadata
 
@@ -22,16 +21,11 @@ def get_attributes(gdal_dataset: gdal.Dataset) -> Dict[str, Any]:
     :param gdal_dataset: Dataset with metadata
     :return: Dictionary with metadata attributes
     """
-
-    domains = gdal_dataset.GetMetadataDomainList()
-    # TODO(Anton): remove print statements
-    for domain in domains:
-        print("\n")
-        print(domain)
-        print(gdal_dataset.GetMetadata(domain))
     attributes = dict()
     process_general_metadata(gdal_dataset, attributes)
     process_records_metadata(gdal_dataset, attributes)
+    process_derived_subdatasets_metadata(gdal_dataset, attributes)
+
 
     attributes['chirp_parameters'] = get_chirp_parameters(gdal_dataset)
 
@@ -41,7 +35,7 @@ def get_attributes(gdal_dataset: gdal.Dataset) -> Dict[str, Any]:
 def open_asar_dataset(filepath: str | os.PathLike[Any] | ReadBuffer[Any] | AbstractDataStore) -> xr.Dataset:
     if not isinstance(filepath, str):
         raise NotImplementedError(f'Filepath type {type(filepath)} is not supported')
-    logger.debug('Opening ASAR dataset %s', filepath)
+    logger.debug('Opening ASAR dataset {}', filepath)
     gdal_dataset: gdal.Dataset = reader.get_gdal_dataset(filepath)
     attributes = get_attributes(gdal_dataset)
     data = gdal_dataset.ReadAsArray()

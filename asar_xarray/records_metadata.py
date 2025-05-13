@@ -1,22 +1,33 @@
 from typing import Any
-
-import numpy as np
 from osgeo import gdal
 
 from asar_xarray import utils
 
 
 def process_records_metadata(dataset: gdal.Dataset, attributes: dict[str, Any]) -> None:
-    metadata = dataset.GetMetadata(domain='records')
-    attributes['records'] = dict()
-    attributes['records']['measurement_sq'] = process_measurement_sq_metadata(metadata)
-    attributes['records']['main_processing_params'] = process_main_processing_params(metadata)
+        """
+        Process metadata from a GDAL dataset and populate the attributes dictionary with structured data.
 
-    done = ['MDS1_SQ_ADS_', '_BANDWIDTH', '_NOMINAL_CHIRP', 'RAW_DATA_ANALYSIS',
-            'IMAGE_PARAMETERS', 'CALIBRATION_FACTORS', 'OUTPUT_STATISTICS',]
-    for key, value in metadata.items():
-        if not any(name in key for name in done):
-            print(f"{key}: {value}")
+        :param dataset: GDAL dataset object containing metadata in the 'records' domain.
+        :param attributes: Dictionary to store processed metadata. The 'records' key will be populated with:
+            - 'measurement_sq': Processed measurement square metadata.
+            - 'main_processing_params': Processed main processing parameters metadata.
+            - 'dop_centroid_coeffs': Processed Doppler centroid coefficients metadata.
+        """
+        # Retrieve metadata from the 'records' domain of the dataset
+        metadata = dataset.GetMetadata(domain='records')
+
+        # Initialize the 'records' key in the attributes dictionary
+        attributes['records'] = dict()
+
+        # Process and store measurement square metadata
+        attributes['records']['measurement_sq'] = process_measurement_sq_metadata(metadata)
+
+        # Process and store main processing parameters metadata
+        attributes['records']['main_processing_params'] = process_main_processing_params(metadata)
+
+        # Process and store Doppler centroid coefficients metadata
+        attributes['records']['dop_centroid_coeffs'] = process_dop_centroid_coeffs(metadata)
 
 
 def process_main_processing_params(metadata: dict[str, str]) -> dict[str, Any]:
@@ -29,6 +40,10 @@ def process_main_processing_params(metadata: dict[str, str]) -> dict[str, Any]:
     params['calibration_factors'] = process_calibration_factors(metadata)
     params['output_statistics'] = process_output_statistics(metadata)
     params['orbit_state_vectors'] = process_orbit_state_vectors(metadata)
+    params['start_time'] = process_start_time(metadata)
+    params['parameter_codes'] = process_parameter_codes(metadata)
+    params['error_counters'] = process_error_counters(metadata)
+    params['noise_estimation'] = process_noise_estimation(metadata)
     return params
 
 
@@ -69,6 +84,7 @@ def process_raw_data_analysis(metadata: dict[str, str]) -> list[dict[str, Any]]:
     # Convert dictionary to the sorted list
     return [analysis_dict[idx] for idx in sorted(analysis_dict.keys())]
 
+
 def process_image_parameters(metadata: dict[str, str]) -> dict[str, Any]:
     """
     Process image parameters metadata by converting values to appropriate types
@@ -100,6 +116,7 @@ def process_image_parameters(metadata: dict[str, str]) -> dict[str, Any]:
 
     return processed
 
+
 def process_bandwidth(metadata: dict[str, str]) -> dict[str, Any]:
     """
     Process bandwidth metadata by extracting meaningful values.
@@ -123,6 +140,7 @@ def process_bandwidth(metadata: dict[str, str]) -> dict[str, Any]:
         processed[param] = values[0] if len(values) == 1 else values
 
     return processed
+
 
 def process_nominal_chirp(metadata: dict[str, str]) -> list[dict[str, Any]]:
     """
@@ -160,6 +178,7 @@ def process_nominal_chirp(metadata: dict[str, str]) -> list[dict[str, Any]]:
     return [chirp_dict[idx] for idx in sorted(chirp_dict.keys())
             if any(v != 0 and v != [0.0] for v in chirp_dict[idx].values() if v != idx)]
 
+
 def process_calibration_factors(metadata: dict[str, str]) -> list[dict[str, Any]]:
     """
     Process calibration factors metadata into list of dictionaries.
@@ -192,6 +211,7 @@ def process_calibration_factors(metadata: dict[str, str]) -> list[dict[str, Any]
     # Convert dictionary to sorted list
     return [calib_dict[idx] for idx in sorted(calib_dict.keys())]
 
+
 def process_output_statistics(metadata: dict[str, str]) -> list[dict[str, Any]]:
     """
     Process output statistics metadata into list of dictionaries.
@@ -223,6 +243,7 @@ def process_output_statistics(metadata: dict[str, str]) -> list[dict[str, Any]]:
 
     # Convert dictionary to sorted list
     return [stats_dict[idx] for idx in sorted(stats_dict.keys())]
+
 
 def process_orbit_state_vectors(metadata: dict[str, str]) -> list[dict[str, Any]]:
     """
@@ -260,6 +281,114 @@ def process_orbit_state_vectors(metadata: dict[str, str]) -> list[dict[str, Any]
     # Convert dictionary to sorted list
     return [vectors_dict[idx] for idx in sorted(vectors_dict.keys())]
 
+
+def process_start_time(metadata: dict[str, str]) -> list[dict[str, Any]]:
+    """
+    Process start time metadata into list of dictionaries.
+
+    :param metadata: Dictionary with start time metadata
+    :return: List of dictionaries containing start time parameters
+    """
+    time_dict = {}
+
+    for key, value in metadata.items():
+        if not key.startswith('MAIN_PROCESSING_PARAMS_ADS_START_TIME'):
+            continue
+
+        # Split key into parts to get index and parameter name
+        parts = key.split('.')
+        if len(parts) != 3:
+            continue
+
+        # Get index and parameter name
+        idx = int(parts[1])
+        param = parts[2].lower()  # Convert parameter name to lowercase
+
+        # Initialize dict for this index if not exists
+        if idx not in time_dict:
+            time_dict[idx] = {'index': idx}
+
+        if param == 'first_mjd':
+            # Convert MJD values using utils.get_envisat_time
+            time_dict[idx][param] = utils.get_envisat_time(value)
+        else:
+            # Convert OBT values to tuple of integers
+            time_dict[idx][param] = tuple(int(x) for x in value.split())
+
+    # Convert dictionary to sorted list
+    return [time_dict[idx] for idx in sorted(time_dict.keys())]
+
+
+def process_parameter_codes(metadata: dict[str, str]) -> dict[str, Any]:
+    """
+    Process parameter codes metadata into dictionary.
+
+    :param metadata: Dictionary with parameter codes metadata
+    :return: Dictionary containing parameter codes
+    """
+    codes_dict = {}
+
+    for key, value in metadata.items():
+        if not key.startswith('MAIN_PROCESSING_PARAMS_ADS_PARAMETER_CODES'):
+            continue
+
+        # Get parameter name after last dot
+        param = key.split('.')[-1].lower()
+
+        # Convert space-separated values to list and get first non-zero value
+        values = [int(x) for x in value.strip().split()]
+        codes_dict[param] = values if values else 0
+
+    return codes_dict
+
+
+def process_error_counters(metadata: dict[str, str]) -> dict[str, int]:
+    """
+    Process error counters metadata into dictionary.
+
+    :param metadata: Dictionary with error counters metadata
+    :return: Dictionary containing error counter values
+    """
+    counters_dict = {}
+
+    for key, value in metadata.items():
+        if not key.startswith('MAIN_PROCESSING_PARAMS_ADS_ERROR_COUNTERS'):
+            continue
+
+        # Get parameter name after last dot
+        param = key.split('.')[-1].lower()
+
+        # Convert value to integer
+        counters_dict[param] = int(value.strip())
+
+    return counters_dict
+
+
+def process_noise_estimation(metadata: dict[str, str]) -> dict[str, list[float]]:
+    """
+    Process noise estimation metadata into dictionary.
+
+    :param metadata: Dictionary with noise estimation metadata
+    :return: Dictionary containing noise estimation values
+    """
+    noise_dict = {}
+
+    for key, value in metadata.items():
+        if not key.startswith('MAIN_PROCESSING_PARAMS_ADS_NOISE_ESTIMATION'):
+            continue
+
+        # Get parameter name after last dot
+        param = key.split('.')[-1].lower()
+
+        # Convert space-separated values to list, preserving zeros
+        if 'noise_power' in param:
+            noise_dict[param] = [float(x) for x in value.strip().split()]
+        else:
+            noise_dict[param] = [int(x) for x in value.strip().split()]
+
+    return noise_dict
+
+
 def process_general_main_processing_params(metadata: dict[str, str]) -> dict[str, Any]:
     """
     Process basic main processing parameters metadata by removing 'MAIN_PROCESSING_PARAMS_ADS_' prefix
@@ -270,14 +399,14 @@ def process_general_main_processing_params(metadata: dict[str, str]) -> dict[str
     """
     # Keys to exclude - they will be processed separately
     exclude_patterns = [
-        'raw_data_analysis',  # done
-        'image_parameters', # done
-        'bandwidth', # done
-        'nominal_chirp', # done
-        'calibration_factors', # done
-        'output_statistics', # done
+        'raw_data_analysis',
+        'image_parameters',
+        'bandwidth',
+        'nominal_chirp',
+        'calibration_factors',
+        'output_statistics',
         'orbit_state_vectors',
-        's_start_time',
+        'ads_start_time',
         's_parameter_codes',
         's_error_counters',
         's_noise_estimation',
@@ -294,7 +423,7 @@ def process_general_main_processing_params(metadata: dict[str, str]) -> dict[str
             continue
 
         # Remove prefix
-        new_key = key[25:].lower()
+        new_key = key[27:].lower()
 
         # Strip whitespace
         value = value.strip()
@@ -376,3 +505,36 @@ def process_measurement_sq_metadata(metadata: dict[str, str]) -> dict[str, Any]:
         processed[new_key] = value
 
     return processed
+
+
+def process_dop_centroid_coeffs(metadata: dict[str, str]) -> dict[str, Any]:
+    """
+    Process doppler centroid coefficients metadata into dictionary.
+
+    :param metadata: Dictionary with doppler centroid coefficients metadata
+    :return: Dictionary containing doppler centroid parameters
+    """
+    dop_dict = {}
+
+    for key, value in metadata.items():
+        if not key.startswith('DOP_CENTROID_COEFFS_ADS_'):
+            continue
+
+        # Get parameter name after prefix
+        param = key[24:].lower()
+
+        # Process different parameter types
+        if param == 'zero_doppler_time':
+            dop_dict[param] = utils.get_envisat_time(value)
+        elif param == 'attach_flag':
+            dop_dict[param] = bool(int(value))
+        elif param == 'dop_conf_below_thresh_flag':
+            dop_dict[param] = bool(int(value))
+        elif param in ('dop_coef', 'delta_dopp_coeff'):
+            # Keep all values including zeros for coefficients
+            dop_dict[param] = [float(x) for x in value.strip().split()]
+        else:
+            # For other numeric values
+            dop_dict[param] = float(value)
+
+    return dop_dict
