@@ -16,7 +16,7 @@ def process_derived_subdatasets_metadata(dataset: gdal.Dataset, attributes: dict
     """
     # Retrieve metadata from the 'DERIVED_SUBDATASETS' domain of the dataset
     metadata = dataset.GetMetadata(domain='DERIVED_SUBDATASETS')
-    # Initialize the 'derived_subdatasets' key in the attributes dictionary
+    # Initialize the 'derived_subdatasets' key in the attribute dictionary
     attributes['derived_subdatasets'] = {}
 
     # Temporary dictionary to store subdataset information by index

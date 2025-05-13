@@ -105,12 +105,6 @@ def process_image_parameters(metadata: dict[str, str]) -> dict[str, Any]:
         # Convert space-separated values to list of numbers
         values = [float(x) for x in value.strip().split()]
 
-        # Remove trailing zeros (where all elements after some point are 0)
-        for i in range(len(values) - 1, -1, -1):
-            if values[i] != 0:
-                values = values[:i + 1]
-                break
-
         # If only one value remains, store it as scalar
         processed[param] = values[0] if len(values) == 1 else values
 
