@@ -47,7 +47,7 @@ def process_main_processing_params(metadata: dict[str, str]) -> dict[str, Any]:
     return params
 
 
-def process_raw_data_analysis(metadata: dict[str, str]) -> list[dict[str, Any]]:
+def process_raw_data_analysis(metadata: dict[str, str]) -> list[dict[str | int, Any]]:
     """
     Process raw data analysis metadata into list of dictionaries.
 
@@ -71,7 +71,7 @@ def process_raw_data_analysis(metadata: dict[str, str]) -> list[dict[str, Any]]:
 
         # Initialize dict for this index if not exists
         if idx not in analysis_dict:
-            analysis_dict[idx] = {'index': idx}
+            analysis_dict[idx]: dict[str, Any] = {'index': idx}
 
         # Convert value based on type
         if param.endswith('_flag'):
