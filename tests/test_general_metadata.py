@@ -37,7 +37,7 @@ def test_ignores_non_mph_keys() -> None:
 
 
 def test_handles_empty_metadata() -> None:
-    metadata: [str, Any] = {}
+    metadata: dict[str, Any] = {}
     result = process_mph_metadata(metadata)
     assert result == {}
 
@@ -69,7 +69,7 @@ def test_processes_sph_metadata_correctly() -> None:
 
 
 def test_ignores_non_sph_keys() -> None:
-    metadata = {
+    metadata: dict[str, Any] = {
         "NON_SPH_KEY": "value",
         "SPH_VALID_KEY": "123"
     }
@@ -79,13 +79,13 @@ def test_ignores_non_sph_keys() -> None:
 
 
 def test_handles_empty_sph_metadata() -> None:
-    metadata: [str, Any] = {}
+    metadata: dict[str, Any] = {}
     result = process_sph_metadata(metadata)
     assert result == {}
 
 
 def test_parses_lat_long_values_correctly() -> None:
-    metadata = {
+    metadata: dict[str, Any] = {
         "SPH_LATITUDE": "+1234567890",
         "SPH_LONGITUDE": "-0987654321"
     }
@@ -95,7 +95,7 @@ def test_parses_lat_long_values_correctly() -> None:
 
 
 def test_handles_whitespace_in_sph_values() -> None:
-    metadata = {
+    metadata: dict[str, Any] = {
         "SPH_KEY_WITH_SPACES": "   123   "
     }
     result = process_sph_metadata(metadata)
@@ -103,7 +103,7 @@ def test_handles_whitespace_in_sph_values() -> None:
 
 
 def test_processes_ds_metadata_correctly() -> None:
-    metadata = {
+    metadata: dict[str, Any] = {
         "DS_KEY_ONE": "Value1",
         "DS_KEY_TWO": "Value2"
     }
@@ -113,7 +113,7 @@ def test_processes_ds_metadata_correctly() -> None:
 
 
 def test_ignores_non_ds_keys() -> None:
-    metadata = {
+    metadata: dict[str, Any] = {
         "NON_DS_KEY": "Value",
         "DS_VALID_KEY": "ValidValue"
     }
@@ -123,13 +123,13 @@ def test_ignores_non_ds_keys() -> None:
 
 
 def test_handles_empty_ds_metadata() -> None:
-    metadata: [str, Any] = {}
+    metadata: dict[str, Any] = {}
     result = process_ds_metadata(metadata)
     assert result == {}
 
 
 def test_removes_extra_underscores_in_keys() -> None:
-    metadata = {
+    metadata: dict[str, Any] = {
         "DS_KEY__WITH__EXTRA___UNDERSCORES_": "Value"
     }
     result = process_ds_metadata(metadata)
@@ -137,7 +137,7 @@ def test_removes_extra_underscores_in_keys() -> None:
 
 
 def test_strips_whitespace_from_values() -> None:
-    metadata = {
+    metadata: dict[str, Any] = {
         "DS_KEY_WITH_SPACES": "   Value   "
     }
     result = process_ds_metadata(metadata)
@@ -150,7 +150,7 @@ def test_processes_general_metadata_correctly() -> None:
         "SPH_LATITUDE": "+1234567890",
         "DS_KEY_ONE": "Value1"
     })
-    attributes = {}
+    attributes: dict[str, Any] = {}
     process_general_metadata(dataset, attributes)
     assert attributes["creation_date"] == np.datetime64(datetime(2023, 1, 1, 12, 0, 0), "ns")
     assert np.isclose(attributes["latitude"], 123.456789, rtol=1e-09, atol=1e-09)
@@ -159,7 +159,7 @@ def test_processes_general_metadata_correctly() -> None:
 
 def test_handles_empty_metadata_in_general_processing() -> None:
     dataset = mock_gdal_dataset({})
-    attributes = {}
+    attributes: dict[str, Any] = {}
     process_general_metadata(dataset, attributes)
     assert attributes == {}
 
@@ -169,7 +169,7 @@ def test_ignores_unrelated_metadata_keys() -> None:
         "UNRELATED_KEY": "value",
         "MPH_VALID_KEY": "123"
     })
-    attributes = {}
+    attributes: dict[str, Any] = {}
     process_general_metadata(dataset, attributes)
     assert "unrelated_key" not in attributes
     assert attributes["valid_key"] == 123
@@ -181,7 +181,7 @@ def test_processes_combined_metadata_correctly() -> None:
         "SPH_LONGITUDE": "-0987654321",
         "DS_KEY_WITH_SPACES": "   Value   "
     })
-    attributes = {}
+    attributes: dict[str, Any] = {}
     process_general_metadata(dataset, attributes)
     assert attributes["creation_date"] == np.datetime64(datetime(2023, 1, 1, 12, 0, 0), "ns")
     assert np.isclose(attributes["longitude"], -98.7654321, rtol=1e-09, atol=1e-09)

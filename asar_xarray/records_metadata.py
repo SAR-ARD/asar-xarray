@@ -54,7 +54,7 @@ def process_raw_data_analysis(metadata: dict[str, str]) -> list[dict[str | int, 
     :param metadata: Dictionary with raw data analysis metadata
     :return: List of dictionaries containing raw data analysis parameters
     """
-    analysis_dict = {}
+    analysis_dict: dict[int, dict[str, Any]] = {}
 
     for key, value in metadata.items():
         if not key.startswith('MAIN_PROCESSING_PARAMS_ADS_RAW_DATA_ANALYSIS'):
@@ -71,7 +71,7 @@ def process_raw_data_analysis(metadata: dict[str, str]) -> list[dict[str | int, 
 
         # Initialize dict for this index if not exists
         if idx not in analysis_dict:
-            analysis_dict[idx]: dict[str, Any] = {'index': idx}
+            analysis_dict[idx] = {'index': idx}
 
         # Convert value based on type
         if param.endswith('_flag'):
@@ -143,7 +143,7 @@ def process_nominal_chirp(metadata: dict[str, str]) -> list[dict[str, Any]]:
     :param metadata: Dictionary with nominal chirp metadata
     :return: List of dictionaries containing nominal chirp parameters
     """
-    chirp_dict = {}
+    chirp_dict: dict[int, dict[str, Any]] = {}
 
     for key, value in metadata.items():
         if not key.startswith('MAIN_PROCESSING_PARAMS_ADS_NOMINAL_CHIRP'):
@@ -180,7 +180,7 @@ def process_calibration_factors(metadata: dict[str, str]) -> list[dict[str, Any]
     :param metadata: Dictionary with calibration factors metadata
     :return: List of dictionaries containing calibration factors parameters
     """
-    calib_dict = {}
+    calib_dict: dict[int, dict[str, Any]] = {}
 
     for key, value in metadata.items():
         if not key.startswith('MAIN_PROCESSING_PARAMS_ADS_CALIBRATION_FACTORS'):
@@ -213,7 +213,7 @@ def process_output_statistics(metadata: dict[str, str]) -> list[dict[str, Any]]:
     :param metadata: Dictionary with output statistics metadata
     :return: List of dictionaries containing output statistics parameters
     """
-    stats_dict = {}
+    stats_dict: dict[int, dict[str, Any]] = {}
 
     for key, value in metadata.items():
         if not key.startswith('MAIN_PROCESSING_PARAMS_ADS_OUTPUT_STATISTICS'):
@@ -246,7 +246,7 @@ def process_orbit_state_vectors(metadata: dict[str, str]) -> list[dict[str, Any]
     :param metadata: Dictionary with orbit state vectors metadata
     :return: List of dictionaries containing orbit state vectors parameters
     """
-    vectors_dict = {}
+    vectors_dict: dict[int, dict[str, Any]] = {}
 
     for key, value in metadata.items():
         if not key.startswith('MAIN_PROCESSING_PARAMS_ADS_ORBIT_STATE_VECTORS'):
@@ -283,7 +283,7 @@ def process_start_time(metadata: dict[str, str]) -> list[dict[str, Any]]:
     :param metadata: Dictionary with start time metadata
     :return: List of dictionaries containing start time parameters
     """
-    time_dict = {}
+    time_dict: dict[int, dict[str, Any]] = {}
 
     for key, value in metadata.items():
         if not key.startswith('MAIN_PROCESSING_PARAMS_ADS_START_TIME'):
@@ -458,7 +458,7 @@ def process_measurement_sq_metadata(metadata: dict[str, str]) -> dict[str, Any]:
     :param metadata: Dictionary with MDS1_SQ metadata
     :return: Processed metadata dictionary
     """
-    processed = {}
+    processed: dict[int, dict[str, Any]] = {}
 
     for key, value in metadata.items():
         if not key.startswith('MDS1_SQ_ADS_'):
