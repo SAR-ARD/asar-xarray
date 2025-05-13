@@ -20,7 +20,7 @@ def process_derived_subdatasets_metadata(dataset: gdal.Dataset, attributes: dict
     attributes['derived_subdatasets'] = {}
 
     # Temporary dictionary to store subdataset information by index
-    subdatasets = {}
+    subdatasets: dict[str, Any] = {}
     for key, value in metadata.items():
         # Split the metadata key to extract the index and type (NAME or DESC)
         parts = key.split('_')

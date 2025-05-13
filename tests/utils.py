@@ -1,9 +1,10 @@
+from typing import Any
 from unittest.mock import Mock
 
 from osgeo import gdal
 
 
-def mock_gdal_dataset(metadata: dict) -> Mock:
+def mock_gdal_dataset(metadata: dict[str, Any]) -> Mock:
     """
     Creates a mock GDAL dataset that returns the specified metadata when GetMetadata is called.
 

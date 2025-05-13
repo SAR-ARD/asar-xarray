@@ -21,7 +21,7 @@ def process_mph_metadata(metadata: dict[str, str]) -> dict[str, Any]:
     :param metadata: Dictionary with MPH metadata
     :return: Processed metadata dictionary
     """
-    processed = {}
+    processed: dict[str, Any] = {}
 
     for key, value in metadata.items():
         if not key.startswith('MPH_'):
@@ -70,7 +70,7 @@ def process_sph_metadata(metadata: dict[str, str]) -> dict[str, Any]:
     :param metadata: Dictionary with SPH metadata
     :return: Processed metadata dictionary
     """
-    processed = {}
+    processed: dict[str, Any] = {}
 
     for key, value in metadata.items():
         if not key.startswith('SPH_'):
@@ -122,7 +122,7 @@ def process_ds_metadata(metadata: dict[str, str]) -> dict[str, Any]:
     :param metadata: Dictionary with DS metadata containing underscores
     :return: Processed metadata dictionary with clean keys
     """
-    processed = {}
+    processed: dict[str, Any] = {}
 
     for key, value in metadata.items():
         if not key.startswith('DS_'):
