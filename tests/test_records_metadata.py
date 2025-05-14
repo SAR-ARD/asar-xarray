@@ -1,6 +1,8 @@
 from typing import Any
 from unittest import mock
 
+import numpy as np
+
 from asar_xarray import utils
 from asar_xarray.records_metadata import process_dop_centroid_coeffs, process_measurement_sq_metadata, \
     process_general_main_processing_params, process_noise_estimation, process_error_counters, process_parameter_codes, \
@@ -51,7 +53,7 @@ def test_processes_single_float_value_correctly() -> None:
         "MDS1_SQ_ADS_FLOAT_VALUE": "0.5"
     }
     result = process_measurement_sq_metadata(metadata)
-    assert result["float_value"] == 0.5
+    assert np.isclose(result["float_value"], 0.5, rtol=1e-09, atol=1e-09)
 
 
 def test_processes_boolean_flags_correctly() -> None:
@@ -75,7 +77,7 @@ def test_processes_valid_general_main_processing_params() -> None:
     result = process_general_main_processing_params(metadata)
     assert result["zero_doppler_time"] == utils.get_envisat_time("123, 45, 678")
     assert result["valid_flag"] is True
-    assert result["float_value"] == 0.123
+    assert np.isclose(result["float_value"], 0.123, rtol=1e-09, atol=1e-09)
     assert result["integer_value"] == 42
     assert result["string_value"] == "example"
 
@@ -600,7 +602,7 @@ def test_processes_all_main_processing_params_correctly() -> None:
     result = process_main_processing_params(metadata)
     assert result["raw_data_analysis"] == [{"index": 1, "param_a": 4.56}]
     assert result["image_parameters"]["param_a"] == [0.1, 0.2]
-    assert result["bandwidth"]["param_a"] == 0.5
+    assert np.isclose(result["bandwidth"]["param_a"], 0.5, rtol=1e-9, atol=1e-9)
     assert result["nominal_chirp"] == [{"index": 1, "param_a": 2.0}]
     assert result["calibration_factors"] == [{"index": 1, "factor_a": 3.14}]
     assert result["output_statistics"] == [{"index": 1, "value_a": 0.01}]
@@ -634,7 +636,7 @@ def test_skips_invalid_keys_in_main_processing_params() -> None:
     }
     result = process_main_processing_params(metadata)
     assert "invalid_key" not in result
-    assert result["general.param_a"] == 1.23
+    assert np.isclose(result["general.param_a"], 1.23, rtol=1e-9, atol=1e-9)
 
 def test_handles_invalid_values_gracefully_in_main_processing_params() -> None:
     metadata = {
@@ -662,8 +664,8 @@ def test_processes_records_metadata_correctly() -> None:
     }
     attributes: dict[str, Any] = {}
     process_records_metadata(dataset, attributes)
-    assert attributes["records"]["measurement_sq"]["param_a"] == 1.23
-    assert attributes["records"]["main_processing_params"]["general.param_a"] == 4.56
+    assert np.isclose(attributes["records"]["measurement_sq"]["param_a"], 1.23, rtol=1e-09, atol=1e-09)
+    assert np.isclose(attributes["records"]["main_processing_params"]["general.param_a"], 4.56, rtol=1e-09, atol=1e-09)
     assert attributes["records"]["dop_centroid_coeffs"]["zero_doppler_time"] == utils.get_envisat_time("12345, 12, 10")
 
 def test_handles_empty_records_metadata() -> None:
@@ -687,7 +689,7 @@ def test_handles_empty_records_metadata() -> None:
     }
     assert attributes["records"]["dop_centroid_coeffs"] == {}
 
-def stest_kips_invalid_records_metadata_keys() -> None:
+def test_kips_invalid_records_metadata_keys() -> None:
     dataset = mock.Mock()
     dataset.GetMetadata.return_value = {
         "INVALID_KEY": "value",
@@ -696,4 +698,4 @@ def stest_kips_invalid_records_metadata_keys() -> None:
     attributes: dict[str, Any] = {}
     process_records_metadata(dataset, attributes)
     assert "invalid_key" not in attributes["records"]
-    assert attributes["records"]["measurement_sq"]["param_a"] == 1.23
+    assert np.isclose(attributes["records"]["measurement_sq"]["param_a"], 1.23, atol=1e-8)
