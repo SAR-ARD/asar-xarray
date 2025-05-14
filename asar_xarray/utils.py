@@ -101,7 +101,7 @@ def try_parse_float(value: str) -> float | None:
 
 def try_parse_float_list(value: str) -> float | list[float] | None:
     parts = value.strip().split()
-    if all(re.fullmatch(r'[+-]?\d*\.?\d+(e[+-]?\d+)?', p, re.IGNORECASE) for p in parts):
+    if all(re.fullmatch(r'^[+-]?\d+(?:\.\d+)?(?:e[+-]?\d+)?$', p, re.IGNORECASE) for p in parts):
         try:
             floats = [float(p.replace('+', '')) for p in parts]
             return floats[0] if len(floats) == 1 else floats
