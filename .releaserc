@@ -14,7 +14,7 @@
         ],
         ["@semantic-release/exec",
             {
-            "prepareCmd": "poetry version ${nextRelease.version} && poetry build"
+            "prepareCmd": "sed -i \"s/^version\\s*=\\s*'.*'/version = '${nextRelease.version}'/\" pyproject.toml"
             }
         ],
         "@semantic-release/github",
