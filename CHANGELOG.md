@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+# [1.3.0](https://github.com/Achaad/asar-xarray/compare/v1.2.0...v1.3.0) (2025-05-14)
+
+
+### Features
+
+* add metadata parsing ([02357b3](https://github.com/Achaad/asar-xarray/commit/02357b3e2dd396f0bd5a5f2b6f736d53eaec89f0))
+
 # [1.2.0](https://github.com/Achaad/asar-xarray/compare/v1.1.0...v1.2.0) (2025-03-12)
 
 
