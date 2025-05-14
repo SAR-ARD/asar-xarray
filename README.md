@@ -14,6 +14,20 @@ This python library reads ESR/ASAR products and converts them into [Xarray](http
 
 ## Usage
 
+### Xarray metadata structure
+Below is provided the metadata structure used by asar-xarray
+
+```
+Dataset:
+   Dimensions: (slant_range_time: int, azimuth_time: int)
+   Coordinates:
+      pixel:    (slant_range_time) int64...
+   Attributes:
+      antenna_elevation_pattern:
+         
+```
+
+
 ## Contribution
 
 ### Branching model
