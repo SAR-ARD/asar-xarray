@@ -2,32 +2,33 @@ from typing import Any
 from osgeo import gdal
 
 from asar_xarray import utils
+from asar_xarray.utils import try_parse_float, try_parse_int, try_parse_float_list
 
 
 def process_records_metadata(dataset: gdal.Dataset, attributes: dict[str, Any]) -> None:
-        """
-        Process metadata from a GDAL dataset and populate the attributes dictionary with structured data.
+    """
+    Process metadata from a GDAL dataset and populate the attributes dictionary with structured data.
 
-        :param dataset: GDAL dataset object containing metadata in the 'records' domain.
-        :param attributes: Dictionary to store processed metadata. The 'records' key will be populated with:
-            - 'measurement_sq': Processed measurement square metadata.
-            - 'main_processing_params': Processed main processing parameters metadata.
-            - 'dop_centroid_coeffs': Processed Doppler centroid coefficients metadata.
-        """
-        # Retrieve metadata from the 'records' domain of the dataset
-        metadata = dataset.GetMetadata(domain='records')
+    :param dataset: GDAL dataset object containing metadata in the 'records' domain.
+    :param attributes: Dictionary to store processed metadata. The 'records' key will be populated with:
+        - 'measurement_sq': Processed measurement square metadata.
+        - 'main_processing_params': Processed main processing parameters metadata.
+        - 'dop_centroid_coeffs': Processed Doppler centroid coefficients metadata.
+    """
+    # Retrieve metadata from the 'records' domain of the dataset
+    metadata = dataset.GetMetadata(domain='records')
 
-        # Initialize the 'records' key in the attributes dictionary
-        attributes['records'] = dict()
+    # Initialize the 'records' key in the attributes dictionary
+    attributes['records'] = dict()
 
-        # Process and store measurement square metadata
-        attributes['records']['measurement_sq'] = process_measurement_sq_metadata(metadata)
+    # Process and store measurement square metadata
+    attributes['records']['measurement_sq'] = process_measurement_sq_metadata(metadata)
 
-        # Process and store main processing parameters metadata
-        attributes['records']['main_processing_params'] = process_main_processing_params(metadata)
+    # Process and store main processing parameters metadata
+    attributes['records']['main_processing_params'] = process_main_processing_params(metadata)
 
-        # Process and store Doppler centroid coefficients metadata
-        attributes['records']['dop_centroid_coeffs'] = process_dop_centroid_coeffs(metadata)
+    # Process and store Doppler centroid coefficients metadata
+    attributes['records']['dop_centroid_coeffs'] = process_dop_centroid_coeffs(metadata)
 
 
 def process_main_processing_params(metadata: dict[str, str]) -> dict[str, Any]:
@@ -411,42 +412,23 @@ def process_general_main_processing_params(metadata: dict[str, str]) -> dict[str
     for key, value in metadata.items():
         if not key.startswith('MAIN_PROCESSING_PARAMS_ADS_'):
             continue
-
-        # Skip excluded patterns
         if any(pattern in key.lower() for pattern in exclude_patterns):
             continue
 
-        # Remove prefix
         new_key = key[27:].lower()
-
-        # Strip whitespace
         value = value.strip()
 
-        # Handle zero doppler time values
+        # Special cases
         if 'zero_doppler_time' in new_key:
             processed[new_key] = utils.get_envisat_time(value)
-            continue
-
-        # Parse flag values as booleans
-        if new_key.endswith('_flag'):
+        elif new_key.endswith('_flag'):
             processed[new_key] = bool(int(value))
-            continue
-
-        # Parse floats
-        if '.' in value:
-            try:
-                processed[new_key] = float(value)
-                continue
-            except ValueError:
-                pass
-
-        # Parse integers
-        if value.replace('-', '').isdigit():
-            processed[new_key] = int(value)
-            continue
-
-        # Keep strings
-        processed[new_key] = value
+        else:
+            parsed = (
+                    try_parse_float(value) or
+                    try_parse_int(value)
+            )
+            processed[new_key] = parsed if parsed is not None else value
 
     return processed
 
@@ -464,39 +446,23 @@ def process_measurement_sq_metadata(metadata: dict[str, str]) -> dict[str, Any]:
         if not key.startswith('MDS1_SQ_ADS_'):
             continue
 
-        # Remove MDS1_SQ_ADS_ prefix
         new_key = key[12:].lower()
-
-        # Strip any whitespace from value
         value = value.strip()
 
-        # Handle zero doppler time special case (days since 2000-01-01, seconds, microseconds)
+        # Special case: Zero Doppler Time
         if 'zero_doppler_time' in new_key:
             processed[new_key] = utils.get_envisat_time(value)
-            continue
-
-        # Parse flag values as booleans
-        if new_key.endswith('_flag'):
+        # Boolean flags
+        elif new_key.endswith('_flag'):
             processed[new_key] = bool(int(value))
-            continue
-
-        # Try parsing as float if contains decimal point
-        if '.' in value:
-            try:
-                # Handle space-separated float values
-                values = [float(v) for v in value.split()]
-                processed[new_key] = values[0] if len(values) == 1 else values
-                continue
-            except ValueError:
-                pass
-
-        # Try parsing as integer
-        if value.replace('-', '').isdigit():
-            processed[new_key] = int(value)
-            continue
-
-        # Keep as string if no other type matches
-        processed[new_key] = value
+        # Float list or single float
+        else:
+            parsed = (
+                    try_parse_float_list(value) or
+                    try_parse_float(value) or
+                    try_parse_int(value)
+            )
+            processed[new_key] = parsed if parsed is not None else value
 
     return processed
 
