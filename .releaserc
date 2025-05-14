@@ -12,11 +12,17 @@
             "changelogTitle": "# Changelog\n\nAll notable changes to this project will be documented in this file."
             }
         ],
+        ["@semantic-release/exec",
+            {
+            "prepareCmd": "poetry version ${nextRelease.version} && poetry build"
+            }
+        ],
         "@semantic-release/github",
         [
             "@semantic-release/git",
             {
             "assets": [
+                "pyproject.toml",
                 "CHANGELOG.md"
             ],
             "message": "chore(release): version ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
