@@ -47,7 +47,7 @@ def process_main_processing_params(metadata: dict[str, str]) -> dict[str, Any]:
     return params
 
 
-def process_raw_data_analysis(metadata: dict[str, str]) -> list[dict[str | int, Any]]:
+def process_raw_data_analysis(metadata: dict[str, str]) -> list[dict[str, Any]]:
     """
     Process raw data analysis metadata into list of dictionaries.
 
@@ -406,7 +406,7 @@ def process_general_main_processing_params(metadata: dict[str, str]) -> dict[str
         's_noise_estimation',
     ]
 
-    processed = {}
+    processed: dict[str, Any] = {}
 
     for key, value in metadata.items():
         if not key.startswith('MAIN_PROCESSING_PARAMS_ADS_'):
@@ -458,7 +458,7 @@ def process_measurement_sq_metadata(metadata: dict[str, str]) -> dict[str, Any]:
     :param metadata: Dictionary with MDS1_SQ metadata
     :return: Processed metadata dictionary
     """
-    processed: dict[int, dict[str, Any]] = {}
+    processed: dict[str, Any] = {}
 
     for key, value in metadata.items():
         if not key.startswith('MDS1_SQ_ADS_'):
@@ -508,7 +508,7 @@ def process_dop_centroid_coeffs(metadata: dict[str, str]) -> dict[str, Any]:
     :param metadata: Dictionary with doppler centroid coefficients metadata
     :return: Dictionary containing doppler centroid parameters
     """
-    dop_dict = {}
+    dop_dict: dict[str, Any] = {}
 
     for key, value in metadata.items():
         if not key.startswith('DOP_CENTROID_COEFFS_ADS_'):

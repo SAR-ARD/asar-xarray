@@ -21,7 +21,7 @@ def get_attributes(gdal_dataset: gdal.Dataset) -> Dict[str, Any]:
     :param gdal_dataset: Dataset with metadata
     :return: Dictionary with metadata attributes
     """
-    attributes = dict()
+    attributes: dict[str, Any] = dict()
     process_general_metadata(gdal_dataset, attributes)
     process_records_metadata(gdal_dataset, attributes)
     process_derived_subdatasets_metadata(gdal_dataset, attributes)
@@ -54,7 +54,7 @@ def get_chirp_parameters(dataset: gdal.Dataset) -> dict[str, Any]:
     :return: dictionary with chirp parameters.
     """
     metadata = dataset.GetMetadata(domain='RECORDS')
-    params = dict()
+    params: dict[str, Any] = dict()
     # Non-float values
     params['zero_doppler_time'] = utils.get_envisat_time(metadata.get('CHIRP_PARAMS_ADS_ZERO_DOPPLER_TIME'))
     params['attach_flag'] = bool(int(metadata.get('CHIRP_PARAMS_ADS_ATTACH_FLAG', '0')))
@@ -72,14 +72,14 @@ def get_chirp_parameters(dataset: gdal.Dataset) -> dict[str, Any]:
     return params
 
 
-def get_chirp_cal_pulse_info(metadata: dict[str, str]) -> list[dict]:
+def get_chirp_cal_pulse_info(metadata: dict[str, str]) -> list[dict[str, Any]]:
     """
     Parse calibration pulse information from metadata into list of dictionaries.
 
     :param metadata: Dictionary containing metadata with CAL_PULSE_INFO entries
     :return: List of dictionaries containing calibration pulse parameters
     """
-    cal_info_dict = {}
+    cal_info_dict: dict[str, Any] = {}
 
     for key, value in metadata.items():
         if 'CAL_PULSE_INFO' not in key:
