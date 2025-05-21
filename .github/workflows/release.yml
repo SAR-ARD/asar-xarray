@@ -20,13 +20,20 @@ jobs:
         with:
           node-version: '14'
 
-      - name: Release to GitHub
-        uses: cycjimmy/semantic-release-action@v4.1.1
-        with:
-          semantic_version: 18.0.0
-          extra_plugins: |
-            @semantic-release/changelog@5.0.1
-            @semantic-release/git
-            @semantic-release/exec
+      - name: Prepare release
+        id: prepare-release
+        uses: python-semantic-release/python-semantic-release@v9.21.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: true
+
+      - name: Release to GitHub
+        id: release
+        uses: python-semantic-release/publish-action@v9.21.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ steps.prepare-release.outputs.tag }}

@@ -50,3 +50,29 @@ asar = 'asar_xarray.xarray_backends:AsarBackend'
 [build-system]
 requires = ['setuptools']
 build-backend = 'setuptools.build_meta'
+
+[tool.semantic_release]
+version_source = "master"
+branch = "master"
+tag_format = "v{version}"
+version_toml = ["pyproject.toml:project.version:tf"]
+upload_to_pypi = true
+changelog_file = "CHANGELOG.md"
+commit_message = "chore(release): {version}"
+token = { env = "GITHUB_TOKEN" }
+major_on_zero = true
+allow_zero_version = true
+
+[tool.semantic_release.branches.main]
+match = "(main|master)"
+prerelease_token = "rc"
+prerelease = false
+
+[tool.semantic_release.commit_parser_options]
+minor_tags = ["feat"]
+patch_tags = ["fix", "perf"]
+other_allowed_tags = ["build", "chore", "ci", "docs", "style", "refactor", "test"]
+allowed_tags = ["feat", "fix", "perf", "build", "chore", "ci", "docs", "style", "refactor", "test"]
+default_bump_level = 0
+parse_squash_commits = false
+ignore_merge_commits = false
