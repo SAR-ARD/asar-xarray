@@ -1,3 +1,5 @@
+"""General metadata processing for ASAR datasets."""
+
 from datetime import datetime
 import re
 from typing import Any
@@ -9,6 +11,18 @@ from asar_xarray import utils
 
 
 def process_general_metadata(dataset: gdal.Dataset, attributes: dict[str, Any]) -> None:
+    """
+    Process general metadata from a GDAL dataset and update the attributes dictionary.
+
+    This function retrieves metadata from the provided GDAL dataset and processes it
+    using three helper functions: `process_mph_metadata`, `process_sph_metadata`, and
+    `process_ds_metadata`. The processed metadata is then added to the `attributes`
+    dictionary.
+
+    :param dataset: A GDAL dataset object from which metadata is retrieved.
+    :param attributes: A dictionary to be updated with processed metadata.
+    :return: None
+    """
     metadata = dataset.GetMetadata(domain='')
     attributes.update(process_mph_metadata(metadata))
     attributes.update(process_sph_metadata(metadata))
@@ -18,6 +32,7 @@ def process_general_metadata(dataset: gdal.Dataset, attributes: dict[str, Any]) 
 def process_mph_metadata(metadata: dict[str, str]) -> dict[str, Any]:
     """
     Process MPH metadata by removing 'MPH_' prefix and converting values to appropriate types.
+
     Uses numpy.datetime64 for datetime values.
 
     :param metadata: Dictionary with MPH metadata
@@ -67,6 +82,7 @@ def process_mph_metadata(metadata: dict[str, str]) -> dict[str, Any]:
 def process_sph_metadata(metadata: dict[str, str]) -> dict[str, Any]:
     """
     Process SPH metadata by removing 'SPH_' prefix and converting values to appropriate types.
+
     Uses numpy.datetime64 for datetime values.
 
     :param metadata: Dictionary with SPH metadata

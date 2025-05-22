@@ -1,3 +1,5 @@
+"""Process derived subdatasets metadata from GDAL dataset."""
+
 from typing import Any
 
 from osgeo import gdal
