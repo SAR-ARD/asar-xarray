@@ -1,3 +1,5 @@
+"""Configuration file for the Sphinx documentation builder."""
+
 # Configuration file for the Sphinx documentation builder.
 #
 # For the full list of built-in configuration values, see the documentation:
@@ -16,9 +18,9 @@ release = 'v1.3.1'
 
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx.ext.napoleon',          # Support for Google/Numpy style docstrings
-    'sphinx_autodoc_typehints',     # Show type hints in docs
-    'myst_parser',                  # Optional: for Markdown support
+    'sphinx.ext.napoleon',  # Support for Google/Numpy style docstrings
+    'sphinx_autodoc_typehints',  # Show type hints in docs
+    'myst_parser',  # Optional: for Markdown support
 ]
 
 autodoc_default_options = {
@@ -30,8 +32,6 @@ autodoc_default_options = {
 
 templates_path = ['_templates']
 exclude_patterns = []
-
-
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
