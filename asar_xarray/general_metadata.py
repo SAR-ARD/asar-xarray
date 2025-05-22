@@ -31,7 +31,7 @@ def process_general_metadata(dataset: gdal.Dataset, attributes: dict[str, Any]) 
 
 def process_mph_metadata(metadata: dict[str, str]) -> dict[str, Any]:
     """
-    Process MPH metadata by removing 'MPH_' prefix and converting values to appropriate types.
+    Process MPH metadata by removing ``MPH_`` prefix and converting values to appropriate types.
 
     Uses numpy.datetime64 for datetime values.
 
@@ -81,7 +81,7 @@ def process_mph_metadata(metadata: dict[str, str]) -> dict[str, Any]:
 
 def process_sph_metadata(metadata: dict[str, str]) -> dict[str, Any]:
     """
-    Process SPH metadata by removing 'SPH_' prefix and converting values to appropriate types.
+    Process SPH metadata by removing ``SPH_`` prefix and converting values to appropriate types.
 
     Uses numpy.datetime64 for datetime values.
 
