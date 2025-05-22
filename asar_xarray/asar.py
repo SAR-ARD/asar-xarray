@@ -1,3 +1,5 @@
+"""ASAR Xarray Dataset Reader."""
+
 import os
 from typing import Dict, Any
 
@@ -26,30 +28,54 @@ def get_attributes(gdal_dataset: gdal.Dataset) -> Dict[str, Any]:
     process_records_metadata(gdal_dataset, attributes)
     process_derived_subdatasets_metadata(gdal_dataset, attributes)
 
-
     attributes['chirp_parameters'] = get_chirp_parameters(gdal_dataset)
 
     return attributes
 
 
 def open_asar_dataset(filepath: str | os.PathLike[Any] | ReadBuffer[Any] | AbstractDataStore) -> xr.Dataset:
+    """
+    Open an ASAR dataset and converts it into an xarray Dataset.
+
+    This function reads the metadata and pixel data from the given ASAR dataset file,
+    processes the metadata into attributes, and constructs an xarray Dataset.
+
+    :param filepath: The path to the ASAR dataset file. It can be a string,
+                     a PathLike object, a ReadBuffer, or an AbstractDataStore.
+    :return: An xarray Dataset containing the pixel data and metadata attributes.
+    :raises NotImplementedError: If the filepath is not a string.
+    """
     if not isinstance(filepath, str):
         raise NotImplementedError(f'Filepath type {type(filepath)} is not supported')
+
     logger.debug('Opening ASAR dataset {}', filepath)
+
+    # Open the dataset using a custom reader
     gdal_dataset: gdal.Dataset = reader.get_gdal_dataset(filepath)
+
+    # Extract metadata attributes
     attributes = get_attributes(gdal_dataset)
+
+    # Read pixel data from the dataset
     data = gdal_dataset.ReadAsArray()
-    dataset: xr.Dataset = xr.Dataset(data_vars={'pixel_values': (('y', 'x'), data)},
-                                     coords={
-                                         'x': np.arange(data.shape[1]),
-                                         'y': np.arange(data.shape[0])
-                                     }, attrs=attributes)
+
+    # Create an xarray Dataset with pixel data and metadata attributes
+    dataset: xr.Dataset = xr.Dataset(
+        data_vars={'pixel_values': (('y', 'x'), data)},
+        coords={
+            'x': np.arange(data.shape[1]),
+            'y': np.arange(data.shape[0])
+        },
+        attrs=attributes
+    )
+
     return dataset
 
 
 def get_chirp_parameters(dataset: gdal.Dataset) -> dict[str, Any]:
     """
-    Parses dataset metadata for chirp parameters.
+    Parse dataset metadata for chirp parameters.
+
     :param dataset: ASAR dataset.
     :return: dictionary with chirp parameters.
     """

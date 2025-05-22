@@ -1,3 +1,5 @@
+"""Shows how to use the asar xarray plugin."""
+
 import xarray as xr
 
 if __name__ == "__main__":

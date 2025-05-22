@@ -1,3 +1,5 @@
+"""General dataset processing utils."""
+
 import re
 
 import numpy as np
@@ -8,7 +10,7 @@ from numpy import datetime64
 
 def get_envisat_time(time_str: str) -> datetime64 | None:
     """
-    Converts time string to envisat epoch time in numpy datetime64 format.
+    Convert time string to envisat epoch time in numpy datetime64 format.
 
     :param time_str: String containing MJD in format "days, seconds, microseconds"
     :return: numpy datetime64 object
@@ -38,6 +40,7 @@ def get_envisat_time(time_str: str) -> datetime64 | None:
 
 def get_mjd_time(mjd_str: str) -> datetime64 | None:
     """
+    Convert mjd time to numpy.datetime64 format.
 
     :param mjd_str: String containing MJD in format "days, seconds, microseconds"
     :return: numpy datetime64 object
@@ -66,6 +69,16 @@ def get_mjd_time(mjd_str: str) -> datetime64 | None:
 
 
 def try_parse_datetime(value: str) -> np.datetime64 | None:
+    """
+    Attempt to parse a string into a numpy.datetime64 object.
+
+    This function checks if the input string matches a specific datetime format
+    (e.g., "DD-MMM-YYYY HH:MM:SS") and converts it into a numpy.datetime64 object
+    if valid. If the string does not match the format or cannot be parsed, it returns None.
+
+    :param value: The string to parse, expected in the format "DD-MMM-YYYY HH:MM:SS".
+    :return: A numpy.datetime64 object if parsing is successful, otherwise None.
+    """
     datetime_pattern = re.compile(r'\d{2}-[A-Z]{3}-\d{4}\s+\d{2}:\d{2}:\d{2}')
     if datetime_pattern.match(value):
         try:
@@ -77,6 +90,16 @@ def try_parse_datetime(value: str) -> np.datetime64 | None:
 
 
 def try_parse_latlong(value: str) -> float | None:
+    """
+    Attempt to parse a latitude/longitude value from a string.
+
+    This function checks if the input string matches the expected format for latitude
+    or longitude values (a signed 10-digit integer). If the format is valid, it converts
+    the value to a float by dividing it by 1e7. If the format is invalid, it returns None.
+
+    :param value: The string to parse, expected to be a signed 10-digit integer.
+    :return: A float representing the latitude/longitude if parsing is successful, otherwise None.
+    """
     latlong_pattern = re.compile(r'[+-]\d{10}$')
     if latlong_pattern.match(value):
         return float(value) / 1e7
@@ -84,6 +107,17 @@ def try_parse_latlong(value: str) -> float | None:
 
 
 def try_parse_int(value: str) -> int | None:
+    """
+    Attempt to parse an integer value from a string.
+
+    This function checks if the input string represents a valid integer.
+    It removes any '+' or '-' signs for validation purposes and then
+    converts the string to an integer if valid. If the string is not a valid
+    integer, it returns None.
+
+    :param value: The string to parse, expected to represent an integer.
+    :return: An integer if parsing is successful, otherwise None.
+    """
     numeric = value.replace('+', '-').replace('-', '')
     if numeric.isdigit():
         return int(value.replace('+', ''))
@@ -91,6 +125,17 @@ def try_parse_int(value: str) -> int | None:
 
 
 def try_parse_float(value: str) -> float | None:
+    """
+    Attempt to parse a floating-point number from a string.
+
+    This function checks if the input string contains a valid floating-point number,
+    indicated by the presence of 'E' (scientific notation) or a decimal point ('.').
+    If valid, it converts the string to a float. If the string is not a valid float,
+    it returns None.
+
+    :param value: The string to parse, expected to represent a floating-point number.
+    :return: A float if parsing is successful, otherwise None.
+    """
     if 'E' in value or '.' in value:
         try:
             return float(value.replace('+', ''))
@@ -100,6 +145,20 @@ def try_parse_float(value: str) -> float | None:
 
 
 def try_parse_float_list(value: str) -> float | list[float] | None:
+    """
+    Attempt to parse a string into a float or a list of floats.
+
+    This function splits the input string into parts and checks if each part matches
+    the format of a valid floating-point number (including scientific notation).
+    If all parts are valid, it converts them to floats. If there is only one float,
+    it returns that float. If there are multiple floats, it returns a list of floats.
+    If the input string is invalid, it returns None.
+
+    :param value: The string to parse, expected to contain one or more floating-point numbers
+                  separated by whitespace.
+    :return: A single float if the input contains one valid number, a list of floats if
+             multiple valid numbers are present, or None if parsing fails.
+    """
     parts = value.strip().split()
     if all(re.fullmatch(r'^[+-]?\d+(?:\.\d+)?(?:e[+-]?\d+)?$', p, re.IGNORECASE) for p in parts):
         try:

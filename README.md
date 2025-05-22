@@ -61,6 +61,21 @@ The project uses git lfs for tracking satellite imagery. In order to use git lfs
 
 If you need to track any other large files, execute `git lfs track "*.${extension}"`.
 
+### flak8 documentation
+
+The project actively uses flake8 for documentation and code style checking. Before pushing the changes,
+it is highly recommended to run:
+```bash
+
+pip install flake8 flake8-docstrings
+flake8 .
+```
+The repository is configured to run flake8 checks on every commit. If the code style is not correct, the commit will be rejected.
+
+If using Pycharm for development, use of _flake8-for-pycharm_ plugin is recommended. Installation instructions can be 
+found 
+[here](https://pypi.org/project/flake8-for-pycharm/).
+
 ### Issue tracking
 When the development on the issue begins, tag _In progress_ should be added to it.
 

@@ -1,3 +1,5 @@
+"""Records metadata processing for ASAR datasets."""
+
 from typing import Any
 from osgeo import gdal
 
@@ -32,6 +34,27 @@ def process_records_metadata(dataset: gdal.Dataset, attributes: dict[str, Any]) 
 
 
 def process_main_processing_params(metadata: dict[str, str]) -> dict[str, Any]:
+    """
+    Process the main processing parameters metadata and organize it into a structured dictionary.
+
+    This function extracts and processes various categories of main processing parameters
+    from the provided metadata dictionary. Each category is handled by a dedicated helper function.
+
+    :param metadata: Dictionary containing the main processing parameters metadata.
+    :return: A dictionary with the processed main processing parameters, structured as follows:
+        - 'general': General main processing parameters.
+        - 'raw_data_analysis': List of dictionaries with raw data analysis parameters.
+        - 'image_parameters': Dictionary with image parameters.
+        - 'bandwidth': Dictionary with bandwidth parameters.
+        - 'nominal_chirp': List of dictionaries with nominal chirp parameters.
+        - 'calibration_factors': List of dictionaries with calibration factors.
+        - 'output_statistics': List of dictionaries with output statistics.
+        - 'orbit_state_vectors': List of dictionaries with orbit state vectors.
+        - 'start_time': List of dictionaries with start time parameters.
+        - 'parameter_codes': Dictionary with parameter codes.
+        - 'error_counters': Dictionary with error counters.
+        - 'noise_estimation': Dictionary with noise estimation parameters.
+    """
     params = dict()
     params.update(process_general_main_processing_params(metadata))
     params['raw_data_analysis'] = process_raw_data_analysis(metadata)
@@ -88,8 +111,7 @@ def process_raw_data_analysis(metadata: dict[str, str]) -> list[dict[str, Any]]:
 
 def process_image_parameters(metadata: dict[str, str]) -> dict[str, Any]:
     """
-    Process image parameters metadata by converting values to appropriate types
-    and removing trailing zeros from arrays.
+    Process image parameters metadata.
 
     :param metadata: Dictionary with image parameters metadata
     :return: Processed metadata dictionary
@@ -386,8 +408,7 @@ def process_noise_estimation(metadata: dict[str, str]) -> dict[str, list[float]]
 
 def process_general_main_processing_params(metadata: dict[str, str]) -> dict[str, Any]:
     """
-    Process basic main processing parameters metadata by removing 'MAIN_PROCESSING_PARAMS_ADS_' prefix
-    and converting values to appropriate types. Excludes complex nested data structures.
+    Process basic main processing parameters metadata.
 
     :param metadata: Dictionary with main processing parameters metadata
     :return: Processed metadata dictionary with basic parameters only
