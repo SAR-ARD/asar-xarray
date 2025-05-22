@@ -23,7 +23,8 @@ jobs:
       - name: Run flake8
         run: flake8 .
 
-      - name: Generate Sphinx documentation
-        working-directory: docs
-        run: |
-          make html
+# Disabled until github pages are set up
+#      - name: Generate Sphinx documentation
+#        working-directory: docs
+#        run: |
+#          make html

@@ -456,7 +456,7 @@ def process_general_main_processing_params(metadata: dict[str, str]) -> dict[str
 
 def process_measurement_sq_metadata(metadata: dict[str, str]) -> dict[str, Any]:
     """
-    Process MDS1_SQ metadata by removing 'MDS1_SQ_ADS_' prefix and converting values to appropriate types.
+    Process MDS1_SQ metadata by removing ``MDS1_SQ_ADS_`` prefix and converting values to appropriate types.
 
     :param metadata: Dictionary with MDS1_SQ metadata
     :return: Processed metadata dictionary
