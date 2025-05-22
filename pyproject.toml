@@ -17,7 +17,7 @@ classifiers = [
     'Topic :: Scientific/Engineering :: GIS'
 ]
 readme = 'README.md'
-license = { text = 'MIT' } # TODO: to be verified (#5)
+license = { text = 'Apache-2.0' }
 keywords = ['ASAR', 'ENVISAT', 'xarray', 'earth-observation', 'remote-sensing', 'radar', 'satellite-imagery', 'sar',
     'synthetic-aperture-radar']
 requires-python = '>=3.12'
