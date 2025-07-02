@@ -16,6 +16,8 @@ from asar_xarray.derived_subdatasets_metadata import process_derived_subdatasets
 from asar_xarray.general_metadata import process_general_metadata
 from asar_xarray.records_metadata import process_records_metadata
 
+import envisat_direct
+
 
 def get_metadata(gdal_dataset: gdal.Dataset) -> Dict[str, Any]:
     """
@@ -57,6 +59,11 @@ def open_asar_dataset(filepath: str | os.PathLike[Any] | ReadBuffer[Any] | Abstr
     # Extract metadata attributes
     metadata = get_metadata(gdal_dataset)
 
+    # Duplicate, read directly from file, as gdal does not parse some necessary metadata
+    metadata["direct_parse"] = envisat_direct.parse_direct(filepath)
+
+
+
     # Create an xarray Dataset with pixel data and metadata attributes
     dataset: xr.Dataset = create_dataset(metadata, filepath)
 
@@ -69,10 +76,12 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
     product_last_line_utc_time = metadata["last_line_time"]
     print(product_first_line_utc_time)
 
+
     number_of_lines = metadata["records"]["main_processing_params"]["num_output_lines"]
     azimuth_time_interval = 1 / metadata["records"]["main_processing_params"]["image_parameters"]["prf_value"][0]
     range_sampling_rate = metadata["records"]["main_processing_params"]["range_samp_rate"]
-    image_slant_range_time = metadata["records"]["dop_centroid_coeffs"]["slant_range_time"] * 1e-9
+    image_slant_range_time = metadata["direct_parse"]["slant_time_first"] * 1e-9
+    
     number_of_bursts = 0
     # range_pixel_spacing = scipy.constants.c / (2 * range_sampling_rate)
 
@@ -98,7 +107,7 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
         "azimuth_time_interval": azimuth_time_interval,
         "image_slant_range_time": image_slant_range_time,
         "range_sampling_rate": range_sampling_rate,
-        "incidence_angle_mid_swath": 22,
+        "incidence_angle_mid_swath": metadata["direct_parse"]["incidence_angle_center"],
         "metadata": metadata
     }
 
