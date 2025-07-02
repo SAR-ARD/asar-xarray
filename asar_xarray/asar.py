@@ -9,15 +9,12 @@ import numpy as np
 from osgeo import gdal
 from xarray.backends import AbstractDataStore
 from xarray.core.types import ReadBuffer
-from asar_xarray import reader, utils
+from asar_xarray import reader, utils, envisat_direct
 from loguru import logger
 
 from asar_xarray.derived_subdatasets_metadata import process_derived_subdatasets_metadata
 from asar_xarray.general_metadata import process_general_metadata
 from asar_xarray.records_metadata import process_records_metadata
-
-import envisat_direct
-
 
 def get_metadata(gdal_dataset: gdal.Dataset) -> Dict[str, Any]:
     """
