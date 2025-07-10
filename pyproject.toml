@@ -17,7 +17,7 @@ classifiers = [
     'Topic :: Scientific/Engineering :: GIS'
 ]
 readme = 'README.md'
-license = { text = 'Apache-2.0' }
+license-files = ['LICENSE']
 keywords = ['ASAR', 'ENVISAT', 'xarray', 'earth-observation', 'remote-sensing', 'radar', 'satellite-imagery', 'sar',
     'synthetic-aperture-radar']
 requires-python = '>=3.12'

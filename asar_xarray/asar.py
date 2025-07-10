@@ -3,12 +3,13 @@
 import os
 from typing import Dict, Any
 
+import pandas as pd
 import xarray as xr
 import numpy as np
 from osgeo import gdal
 from xarray.backends import AbstractDataStore
 from xarray.core.types import ReadBuffer
-from asar_xarray import reader, utils
+from asar_xarray import reader, utils, envisat_direct
 from loguru import logger
 
 from asar_xarray.derived_subdatasets_metadata import process_derived_subdatasets_metadata
@@ -16,7 +17,7 @@ from asar_xarray.general_metadata import process_general_metadata
 from asar_xarray.records_metadata import process_records_metadata
 
 
-def get_attributes(gdal_dataset: gdal.Dataset) -> Dict[str, Any]:
+def get_metadata(gdal_dataset: gdal.Dataset) -> Dict[str, Any]:
     """
     Build xarray attributes from gdal dataset to be used in xarray.
 
@@ -54,22 +55,108 @@ def open_asar_dataset(filepath: str | os.PathLike[Any] | ReadBuffer[Any] | Abstr
     gdal_dataset: gdal.Dataset = reader.get_gdal_dataset(filepath)
 
     # Extract metadata attributes
-    attributes = get_attributes(gdal_dataset)
+    metadata = get_metadata(gdal_dataset)
 
-    # Read pixel data from the dataset
-    data = gdal_dataset.ReadAsArray()
+    # Duplicate, read directly from file, as gdal does not parse some necessary metadata
+    metadata["direct_parse"] = envisat_direct.parse_direct(filepath)
 
     # Create an xarray Dataset with pixel data and metadata attributes
-    dataset: xr.Dataset = xr.Dataset(
-        data_vars={'pixel_values': (('y', 'x'), data)},
-        coords={
-            'x': np.arange(data.shape[1]),
-            'y': np.arange(data.shape[0])
-        },
-        attrs=attributes
-    )
+    dataset: xr.Dataset = create_dataset(metadata, filepath)
 
     return dataset
+
+
+def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
+    """
+    Create an xarray Dataset from ASAR metadata and file path.
+
+    This function constructs the coordinates, attributes, and data variables
+    for an ASAR product, using the provided metadata and file path.
+
+    :param metadata: Dictionary containing ASAR product metadata.
+    :param filepath: Path to the ASAR dataset file.
+    :return: An xarray Dataset with pixel data, coordinates, and attributes.
+    """
+    number_of_samples = metadata["line_length"]
+    product_first_line_utc_time = metadata["first_line_time"]
+    product_last_line_utc_time = metadata["last_line_time"]
+    print(product_first_line_utc_time)
+
+    number_of_lines = metadata["records"]["main_processing_params"]["num_output_lines"]
+    azimuth_time_interval = 1 / metadata["records"]["main_processing_params"]["image_parameters"]["prf_value"][0]
+    range_sampling_rate = metadata["records"]["main_processing_params"]["range_samp_rate"]
+    image_slant_range_time = metadata["direct_parse"]["slant_time_first"] * 1e-9
+
+    number_of_bursts = 0
+
+    attrs = {
+        "family_name": "Envisat",
+        "number": 1,
+        "mode": 1,
+        "swaths": metadata["swath"],
+        "orbit_number": metadata["abs_orbit"],
+        "relative_orbit_number": metadata["rel_orbit"],
+        "pass": metadata["pass"],
+        "transmitter_receiver_polarisations": metadata["mds1_tx_rx_polar"],
+        "product_type": "SLC",
+        "start_time": product_first_line_utc_time,
+        "stop_time": product_last_line_utc_time,
+
+        "radar_frequency": metadata["records"]["main_processing_params"]["radar_freq"] / 1e9,
+        "ascending_node_time": "",
+        "azimuth_pixel_spacing": metadata["records"]["main_processing_params"]["azimuth_spacing"],
+        "range_pixel_spacing": metadata["records"]["main_processing_params"]["range_samp_rate"],
+        "product_first_line_utc_time": product_first_line_utc_time,
+        "product_last_line_utc_time": product_last_line_utc_time,
+        "azimuth_time_interval": azimuth_time_interval,
+        "image_slant_range_time": image_slant_range_time,
+        "range_sampling_rate": range_sampling_rate,
+        "incidence_angle_mid_swath": metadata["direct_parse"]["incidence_angle_center"],
+        "metadata": metadata
+    }
+
+    azimuth_time = compute_azimuth_time(
+        product_first_line_utc_time, product_last_line_utc_time, number_of_lines
+    )
+
+    if number_of_bursts == 0:
+        swap_dims = {"line": "azimuth_time", "pixel": "slant_range_time"}
+    else:
+        raise NotImplementedError(
+            "Burst processing is not implemented yet."
+        )
+
+    coords: dict[str, Any] = {
+        "pixel": np.arange(0, number_of_samples, dtype=int),
+        "line": np.arange(0, number_of_lines, dtype=int),
+        # set "units" explicitly as CF conventions don't support "nanoseconds".
+        # See: https://github.com/pydata/xarray/issues/4183#issuecomment-685200043
+        "azimuth_time": (
+            "line",
+            azimuth_time,
+            {},
+            {"units": f"microseconds since {azimuth_time[0]}"},
+        ),
+    }
+
+    slant_range_time = np.linspace(
+        image_slant_range_time,
+        image_slant_range_time + (number_of_samples - 1) / range_sampling_rate,
+        number_of_samples,
+    )
+    coords["slant_range_time"] = ("pixel", slant_range_time)
+
+    data = xr.open_dataarray(filepath, engine='rasterio')
+    data.encoding.clear()
+    data = data.squeeze("band").drop_vars(["band", "spatial_ref"])
+    data = data.rename({"y": "line", "x": "pixel"})
+    data = data.assign_coords(coords)
+    data = data.swap_dims(swap_dims)
+
+    data.attrs.update(attrs)
+    data.encoding.update({})
+
+    return xr.Dataset(attrs=attrs, data_vars={"measurements": data})
 
 
 def get_chirp_parameters(dataset: gdal.Dataset) -> dict[str, Any]:
@@ -134,3 +221,27 @@ def get_chirp_cal_pulse_info(metadata: dict[str, str]) -> list[dict[str, Any]]:
 
     # Convert the dictionary of dictionaries to the list of dictionaries
     return list(cal_info_dict.values())
+
+
+def compute_azimuth_time(
+        product_first_line_utc_time: np.datetime64,
+        product_last_line_utc_time: np.datetime64,
+        number_of_lines: int
+) -> np.ndarray:
+    """
+    Compute an array of azimuth times for each line in the ASAR product.
+
+    This function generates a sequence of evenly spaced time values between the
+    first and last line UTC times, corresponding to the number of lines in the product.
+
+    :param product_first_line_utc_time: UTC time of the first line (as np.datetime64).
+    :param product_last_line_utc_time: UTC time of the last line (as np.datetime64).
+    :param number_of_lines: Total number of lines in the product.
+    :return: Numpy array of azimuth times for each line.
+    """
+    azimuth_time = pd.date_range(
+        start=product_first_line_utc_time,
+        end=product_last_line_utc_time,
+        periods=number_of_lines
+    )
+    return np.asarray(azimuth_time.values, dtype='datetime64[ns]')
