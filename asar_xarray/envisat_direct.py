@@ -49,7 +49,8 @@ def parse_direct(path: str):
             geoloc_record = geoloc_buf[middle_idx * rec_size: (middle_idx + 1) * rec_size]
             # Geolocation Grid ADSRs header
             header_size = 12 + 1 + 4 + 4 + 4
-            # tiepoints, 11 of big endian floats for each of the following - samp numbers, slant range times, angles, lats, longs
+            # tiepoints, 11 of big endian floats for each of the following:
+            # samp numbers, slant range times, angles, lats, longs
             block_size = 11 * 4
             slant_time_offset = header_size + 1 * block_size
             incidence_angle_offset = header_size + 2 * block_size
@@ -67,8 +68,6 @@ def parse_direct(path: str):
 
             main_processing_params_buf = file_buffer[ads.offset:ads.offset + ads.size]
             if len(main_processing_params_buf) == 10069:
-                ref_look_angle = main_processing_params_buf[2009:2009 + 20]
-
                 sigma_buf = main_processing_params_buf[2029:2029 + 4020]
                 gammma_buf = main_processing_params_buf[2029 + 4020:]
 
