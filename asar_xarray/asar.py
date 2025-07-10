@@ -229,16 +229,16 @@ def compute_azimuth_time(product_first_line_utc_time: np.datetime64,
                          product_last_line_utc_time: np.datetime64,
                          number_of_lines: int) -> np.ndarray:
     """
-   Compute an array of azimuth times for each line in the ASAR product.
+    Compute an array of azimuth times for each line in the ASAR product.
 
-   This function generates a sequence of evenly spaced time values between the
-   first and last line UTC times, corresponding to the number of lines in the product.
+    This function generates a sequence of evenly spaced time values between the
+    first and last line UTC times, corresponding to the number of lines in the product.
 
-   :param product_first_line_utc_time: UTC time of the first line (as np.datetime64).
-   :param product_last_line_utc_time: UTC time of the last line (as np.datetime64).
-   :param number_of_lines: Total number of lines in the product.
-   :return: Numpy array of azimuth times for each line.
-   """
+    :param product_first_line_utc_time: UTC time of the first line (as np.datetime64).
+    :param product_last_line_utc_time: UTC time of the last line (as np.datetime64).
+    :param number_of_lines: Total number of lines in the product.
+    :return: Numpy array of azimuth times for each line.
+    """
     azimuth_time = pd.date_range(start=product_first_line_utc_time, end=product_last_line_utc_time,
                                  periods=number_of_lines)
     return azimuth_time.values
