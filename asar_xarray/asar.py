@@ -226,9 +226,9 @@ def get_chirp_cal_pulse_info(metadata: dict[str, str]) -> list[dict[str, Any]]:
 
 
 def compute_azimuth_time(
-    product_first_line_utc_time: np.datetime64,
-    product_last_line_utc_time: np.datetime64,
-    number_of_lines: int
+        product_first_line_utc_time: np.datetime64,
+        product_last_line_utc_time: np.datetime64,
+        number_of_lines: int
 ) -> np.ndarray:
     """
     Compute an array of azimuth times for each line in the ASAR product.
