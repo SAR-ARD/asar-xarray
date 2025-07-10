@@ -32,10 +32,10 @@ def parse_direct(path: str):
     Parse an Envisat product file and extract relevant metadata fields.
 
     Args:
+    ----
         path (str): Path to the Envisat product file.
 
-    Returns:
-        dict: Dictionary containing extracted metadata fields.
+    returns: Dictionary containing extracted metadata fields.
     """
     metadata = {}
     file_buffer = None
