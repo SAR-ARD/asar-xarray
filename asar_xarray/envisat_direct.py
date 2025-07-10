@@ -60,7 +60,6 @@ def parse_direct(path: str) -> dict[str, Any]:
             rec_size = 521
             assert ((ads.size // ads.num) == rec_size)
             geoloc_buf = file_buffer[ads.offset:ads.offset + ads.size]
-            geoloc_buf = file_buffer[ads.offset:ads.offset + ads.size]
             middle_idx = ads.num // 2
             geoloc_record = geoloc_buf[middle_idx * rec_size: (middle_idx + 1) * rec_size]
             # Geolocation Grid ADSRs header

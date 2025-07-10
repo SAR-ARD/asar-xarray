@@ -88,7 +88,6 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
     image_slant_range_time = metadata["direct_parse"]["slant_time_first"] * 1e-9
 
     number_of_bursts = 0
-    # range_pixel_spacing = scipy.constants.c / (2 * range_sampling_rate)
 
     attrs = {
         "family_name": "Envisat",
@@ -140,13 +139,12 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
         ),
     }
 
-    if True:  # product_information["projection"] == "Slant Range":
-        slant_range_time = np.linspace(
-            image_slant_range_time,
-            image_slant_range_time + (number_of_samples - 1) / range_sampling_rate,
-            number_of_samples,
-        )
-        coords["slant_range_time"] = ("pixel", slant_range_time)
+    slant_range_time = np.linspace(
+        image_slant_range_time,
+        image_slant_range_time + (number_of_samples - 1) / range_sampling_rate,
+        number_of_samples,
+    )
+    coords["slant_range_time"] = ("pixel", slant_range_time)
 
     data = xr.open_dataarray(filepath, engine='rasterio')
     data.encoding.clear()
