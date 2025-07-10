@@ -1,7 +1,9 @@
+"""Module for parsing Envisat direct access data structures and extracting metadata."""
 import struct
 
 
 def parse_int(s: str):
+    """Parse an integer value from a string representation of a field."""
     s = s.replace("<bytes>", "")
     s = s[s.index("=") + 1:]
     # print(s)
@@ -9,7 +11,10 @@ def parse_int(s: str):
 
 
 class EnvisatADS:
+    """Class representing an Envisat Annotation Data Set (ADS) descriptor."""
+
     def __init__(self, buffer: bytes):
+        """Initialize the ADS descriptor from a buffer of bytes."""
         str_arr = buffer.decode("ascii").split("\n")
         name = str_arr[0].replace("DS_NAME=\"", "").replace("\"", "").strip()
         self.name = name
@@ -18,10 +23,20 @@ class EnvisatADS:
         self.offset = parse_int(str_arr[3])
 
     def __str__(self):
+        """Return a string representation of the ADS descriptor."""
         return "Envisat ADS: \"{}\" {} {} {}".format(self.name, self.offset, self.size, self.num)
 
 
 def parse_direct(path: str):
+    """
+    Parse an Envisat product file and extract relevant metadata fields.
+
+    Args:
+        path (str): Path to the Envisat product file.
+
+    Returns:
+        dict: Dictionary containing extracted metadata fields.
+    """
     metadata = {}
     file_buffer = None
     with open(path, "rb") as fp:

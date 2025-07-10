@@ -67,6 +67,16 @@ def open_asar_dataset(filepath: str | os.PathLike[Any] | ReadBuffer[Any] | Abstr
 
 
 def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
+    """
+    Create an xarray Dataset from ASAR metadata and file path.
+
+    This function constructs the coordinates, attributes, and data variables
+    for an ASAR product, using the provided metadata and file path.
+
+    :param metadata: Dictionary containing ASAR product metadata.
+    :param filepath: Path to the ASAR dataset file.
+    :return: An xarray Dataset with pixel data, coordinates, and attributes.
+    """
     number_of_samples = metadata["line_length"]
     product_first_line_utc_time = metadata["first_line_time"]
     product_last_line_utc_time = metadata["last_line_time"]
@@ -117,7 +127,7 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
             "Burst processing is not implemented yet."
         )
 
-    coords = {
+    coords: dict[str, Any] = {
         "pixel": np.arange(0, number_of_samples, dtype=int),
         "line": np.arange(0, number_of_lines, dtype=int),
         # set "units" explicitly as CF conventions don't support "nanoseconds".
@@ -218,6 +228,17 @@ def get_chirp_cal_pulse_info(metadata: dict[str, str]) -> list[dict[str, Any]]:
 def compute_azimuth_time(product_first_line_utc_time: np.datetime64,
                          product_last_line_utc_time: np.datetime64,
                          number_of_lines: int) -> np.ndarray:
+    """
+   Compute an array of azimuth times for each line in the ASAR product.
+
+   This function generates a sequence of evenly spaced time values between the
+   first and last line UTC times, corresponding to the number of lines in the product.
+
+   :param product_first_line_utc_time: UTC time of the first line (as np.datetime64).
+   :param product_last_line_utc_time: UTC time of the last line (as np.datetime64).
+   :param number_of_lines: Total number of lines in the product.
+   :return: Numpy array of azimuth times for each line.
+   """
     azimuth_time = pd.date_range(start=product_first_line_utc_time, end=product_last_line_utc_time,
                                  periods=number_of_lines)
     return azimuth_time.values
