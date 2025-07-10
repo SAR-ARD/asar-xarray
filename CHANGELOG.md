@@ -1,6 +1,55 @@
 # CHANGELOG
 
 
+## v1.4.0 (2025-07-10)
+
+### Continuous Integration
+
+- Remove conf.py from release pipeline
+  ([`632c346`](https://github.com/Achaad/asar-xarray/commit/632c34637210a15041805093528a1790ced7ffb9))
+
+### Documentation
+
+- Update license to the correct one ([#41](https://github.com/Achaad/asar-xarray/pull/41),
+  [`534c6c1`](https://github.com/Achaad/asar-xarray/commit/534c6c1f9756f868ffebd92ebbeea30bed5f637f))
+
+Co-authored-by: Achaad <achaad@achaad.eu>
+
+### Features
+
+- Implement envisat gtc ([#44](https://github.com/Achaad/asar-xarray/pull/44),
+  [`d5d2874`](https://github.com/Achaad/asar-xarray/commit/d5d28741fdd51b1579f706d32b68d83d598f0d52))
+
+* feat: implement envisat gtc
+
+* ci: update tox dependencies
+
+* tests: fix test_xarray_backends.py
+
+* Added direct parsing of Envisat files.
+
+This corrects slant range mistake from previous version for terrain correction and it is required
+  for further development.
+
+* fix: small import error
+
+* style: code style improvements
+
+* tests: fix tests
+
+* Fix typing
+
+* A bit of code style changes
+
+* Fix sonarqube issues
+
+---------
+
+Co-authored-by: Anton Perepelenko <Anton.Perepelenko@cgi.com>
+
+Co-authored-by: Priit Pender <priit@alloca.ee>
+
+
 ## v1.3.1 (2025-05-21)
 
 ### Bug Fixes
