@@ -56,7 +56,6 @@ version_source = "master"
 branch = "master"
 tag_format = "v{version}"
 version_toml = ["pyproject.toml:project.version:tf"]
-version_variables = ["docs/conf.py:release:tf"]
 upload_to_pypi = true
 changelog_file = "CHANGELOG.md"
 commit_message = "chore(release): {version}"
