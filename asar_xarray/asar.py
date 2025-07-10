@@ -225,9 +225,11 @@ def get_chirp_cal_pulse_info(metadata: dict[str, str]) -> list[dict[str, Any]]:
     return list(cal_info_dict.values())
 
 
-def compute_azimuth_time(product_first_line_utc_time: np.datetime64,
-                         product_last_line_utc_time: np.datetime64,
-                         number_of_lines: int) -> np.ndarray:
+def compute_azimuth_time(
+    product_first_line_utc_time: np.datetime64,
+    product_last_line_utc_time: np.datetime64,
+    number_of_lines: int
+) -> np.ndarray:
     """
     Compute an array of azimuth times for each line in the ASAR product.
 
@@ -239,6 +241,9 @@ def compute_azimuth_time(product_first_line_utc_time: np.datetime64,
     :param number_of_lines: Total number of lines in the product.
     :return: Numpy array of azimuth times for each line.
     """
-    azimuth_time = pd.date_range(start=product_first_line_utc_time, end=product_last_line_utc_time,
-                                 periods=number_of_lines)
-    return azimuth_time.values
+    azimuth_time = pd.date_range(
+        start=product_first_line_utc_time,
+        end=product_last_line_utc_time,
+        periods=number_of_lines
+    )
+    return np.asarray(azimuth_time.values, dtype='datetime64[ns]')
