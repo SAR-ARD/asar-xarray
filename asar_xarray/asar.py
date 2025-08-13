@@ -6,6 +6,7 @@ from typing import Dict, Any
 import pandas as pd
 import xarray as xr
 import numpy as np
+import math
 from osgeo import gdal
 from xarray.backends import AbstractDataStore
 from xarray.core.types import ReadBuffer
@@ -58,7 +59,8 @@ def open_asar_dataset(filepath: str | os.PathLike[Any] | ReadBuffer[Any] | Abstr
     metadata = get_metadata(gdal_dataset)
 
     # Duplicate, read directly from file, as gdal does not parse some necessary metadata
-    metadata["direct_parse"] = envisat_direct.parse_direct(filepath)
+
+    metadata["direct_parse"] = envisat_direct.parse_direct(filepath, metadata)
 
     # Create an xarray Dataset with pixel data and metadata attributes
     dataset: xr.Dataset = create_dataset(metadata, filepath)
@@ -80,14 +82,17 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
     number_of_samples = metadata["line_length"]
     product_first_line_utc_time = metadata["first_line_time"]
     product_last_line_utc_time = metadata["last_line_time"]
-    print(product_first_line_utc_time)
 
     number_of_lines = metadata["records"]["main_processing_params"]["num_output_lines"]
-    azimuth_time_interval = 1 / metadata["records"]["main_processing_params"]["image_parameters"]["prf_value"][0]
+    azimuth_time_interval = metadata["line_time_interval"]
+
     range_sampling_rate = metadata["records"]["main_processing_params"]["range_samp_rate"]
     image_slant_range_time = metadata["direct_parse"]["slant_time_first"] * 1e-9
 
-    number_of_bursts = 0
+    if metadata["sph_descriptor"] == "Image Mode SLC Image":
+        product_type = "SLC"
+    else:
+        raise RuntimeError("Only Image mode SLC files(IMS) supported for now")
 
     attrs = {
         "family_name": "Envisat",
@@ -98,20 +103,20 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
         "relative_orbit_number": metadata["rel_orbit"],
         "pass": metadata["pass"],
         "transmitter_receiver_polarisations": metadata["mds1_tx_rx_polar"],
-        "product_type": "SLC",
+        "product_type": product_type,
         "start_time": product_first_line_utc_time,
         "stop_time": product_last_line_utc_time,
-
+        "range_pixel_spacing" : metadata["range_spacing"],
+        "azimuth_pixel_spacing" : metadata["azimuth_spacing"],
         "radar_frequency": metadata["records"]["main_processing_params"]["radar_freq"] / 1e9,
         "ascending_node_time": "",
         "azimuth_pixel_spacing": metadata["records"]["main_processing_params"]["azimuth_spacing"],
-        "range_pixel_spacing": metadata["records"]["main_processing_params"]["range_samp_rate"],
         "product_first_line_utc_time": product_first_line_utc_time,
         "product_last_line_utc_time": product_last_line_utc_time,
         "azimuth_time_interval": azimuth_time_interval,
         "image_slant_range_time": image_slant_range_time,
         "range_sampling_rate": range_sampling_rate,
-        "incidence_angle_mid_swath": metadata["direct_parse"]["incidence_angle_center"],
+        "incidence_angle_mid_swath": metadata["direct_parse"]["incidence_angle_center"] * 2 * math.pi / 360 ,
         "metadata": metadata
     }
 
@@ -119,12 +124,8 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
         product_first_line_utc_time, product_last_line_utc_time, number_of_lines
     )
 
-    if number_of_bursts == 0:
-        swap_dims = {"line": "azimuth_time", "pixel": "slant_range_time"}
-    else:
-        raise NotImplementedError(
-            "Burst processing is not implemented yet."
-        )
+
+    swap_dims = {"line": "azimuth_time", "pixel": "slant_range_time"}
 
     coords: dict[str, Any] = {
         "pixel": np.arange(0, number_of_samples, dtype=int),
@@ -179,7 +180,7 @@ def get_chirp_parameters(dataset: gdal.Dataset) -> dict[str, Any]:
             new_key = key.replace('CHIRP_PARAMS_ADS_CHIRP_', '').lower()
             params['chirp'][new_key] = float(value)
 
-    params['elev_corr_factor'] = float(metadata.get('CHIRP_PARAMS_ADS_ELEV_CORR_FACTOR'))
+    #params['elev_corr_factor'] = float(metadata.get('CHIRP_PARAMS_ADS_ELEV_CORR_FACTOR'))
     params['cal_pulse_info'] = get_chirp_cal_pulse_info(metadata)
 
     return params
