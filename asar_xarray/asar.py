@@ -58,7 +58,8 @@ def open_asar_dataset(filepath: str | os.PathLike[Any] | ReadBuffer[Any] | Abstr
     metadata = get_metadata(gdal_dataset)
 
     # Duplicate, read directly from file, as gdal does not parse some necessary metadata
-    metadata["direct_parse"] = envisat_direct.parse_direct(filepath)
+
+    metadata["direct_parse"] = envisat_direct.parse_direct(filepath, metadata)
 
     # Create an xarray Dataset with pixel data and metadata attributes
     dataset: xr.Dataset = create_dataset(metadata, filepath)
@@ -89,6 +90,12 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
 
     number_of_bursts = 0
 
+    product_type = None
+    if "IMS" in filepath:
+        product_type = "SLC"
+    elif "IMP" in filepath:
+        product_type = "GRD"
+
     attrs = {
         "family_name": "Envisat",
         "number": 1,
@@ -98,14 +105,13 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
         "relative_orbit_number": metadata["rel_orbit"],
         "pass": metadata["pass"],
         "transmitter_receiver_polarisations": metadata["mds1_tx_rx_polar"],
-        "product_type": "SLC",
+        "product_type": product_type,
         "start_time": product_first_line_utc_time,
         "stop_time": product_last_line_utc_time,
 
         "radar_frequency": metadata["records"]["main_processing_params"]["radar_freq"] / 1e9,
         "ascending_node_time": "",
         "azimuth_pixel_spacing": metadata["records"]["main_processing_params"]["azimuth_spacing"],
-        "range_pixel_spacing": metadata["records"]["main_processing_params"]["range_samp_rate"],
         "product_first_line_utc_time": product_first_line_utc_time,
         "product_last_line_utc_time": product_last_line_utc_time,
         "azimuth_time_interval": azimuth_time_interval,
@@ -179,7 +185,7 @@ def get_chirp_parameters(dataset: gdal.Dataset) -> dict[str, Any]:
             new_key = key.replace('CHIRP_PARAMS_ADS_CHIRP_', '').lower()
             params['chirp'][new_key] = float(value)
 
-    params['elev_corr_factor'] = float(metadata.get('CHIRP_PARAMS_ADS_ELEV_CORR_FACTOR'))
+    #params['elev_corr_factor'] = float(metadata.get('CHIRP_PARAMS_ADS_ELEV_CORR_FACTOR'))
     params['cal_pulse_info'] = get_chirp_cal_pulse_info(metadata)
 
     return params

@@ -1,6 +1,9 @@
 """Module for parsing Envisat direct access data structures and extracting metadata."""
 import struct
 from typing import Any
+import os
+import math
+import pathlib
 
 
 def parse_int(s: str) -> int:
@@ -19,6 +22,7 @@ class EnvisatADS:
         str_arr = buffer.decode("ascii").split("\n")
         name = str_arr[0].replace("DS_NAME=\"", "").replace("\"", "").strip()
         self.name = name
+        self.filename = str_arr[2].replace("FILENAME=\"", "").replace(" \"", "")
         self.num = parse_int(str_arr[5])
         self.size = parse_int(str_arr[4])
         self.offset = parse_int(str_arr[3])
@@ -28,7 +32,7 @@ class EnvisatADS:
         return "Envisat ADS: \"{}\" {} {} {}".format(self.name, self.offset, self.size, self.num)
 
 
-def parse_direct(path: str) -> dict[str, Any]:
+def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
     """
     Parse an Envisat product file and extract relevant metadata fields.
 
@@ -56,6 +60,7 @@ def parse_direct(path: str) -> dict[str, Any]:
 
     for i in range(dsd_num):
         ads = EnvisatADS(dsd_buf[i * dsd_size:(i + 1) * dsd_size])
+        #print(ads.name)
         if ads.name == "GEOLOCATION GRID ADS":
             rec_size = 521
             assert ((ads.size // ads.num) == rec_size)
@@ -64,6 +69,17 @@ def parse_direct(path: str) -> dict[str, Any]:
             geoloc_record = geoloc_buf[middle_idx * rec_size: (middle_idx + 1) * rec_size]
             # Geolocation Grid ADSRs header
             header_size = 12 + 1 + 4 + 4 + 4
+
+            lats_buffer = geoloc_buf[header_size + 11 * 4 * 3 : header_size + 11 * 4 * 4]
+            lons_buffer = geoloc_buf[header_size + 11 * 4 * 4: header_size + 11 * 4 * 5]
+
+
+            lats = list(struct.unpack(">11i", lats_buffer))
+            lons = list(struct.unpack(">11i", lons_buffer))
+            lats = [e * 1e-6 for e in lats]
+            lons = [e * 1e-6 for e in lons]
+
+
             # tiepoints, 11 of big endian floats for each of the following:
             # samp numbers, slant range times, angles, lats, longs
             block_size = 11 * 4
@@ -76,17 +92,60 @@ def parse_direct(path: str) -> dict[str, Any]:
             incidence_angle_middle = \
                 struct.unpack(">f", geoloc_record[incidence_angle_offset:incidence_angle_offset + 4])[0]
 
+
+
             metadata["slant_time_first"] = slant_time_first
             metadata["incidence_angle_center"] = incidence_angle_middle
 
-        if ads.name == "MAIN PROCESSING PARAMS ADS":
 
-            main_processing_params_buf = file_buffer[ads.offset:ads.offset + ads.size]
-            if len(main_processing_params_buf) == 10069:
-                sigma_buf = main_processing_params_buf[2029:2029 + 4020]
-                gammma_buf = main_processing_params_buf[2029 + 4020:]
 
-                metadata["sigma_calib_vector"] = sigma_buf
-                metadata["gamma_calib_vector"] = gammma_buf
+        ext_cal_buf = None
+        if ads.name == "EXTERNAL CALIBRATION":
+
+            a =  os.path.abspath(__file__)
+
+            auxfolder = pathlib.Path(os.path.abspath(__file__)).parent
+            auxfolder /= "aux"
+            auxfolder /= "ASAR_Auxiliary_Files"
+            auxfolder /= "ASA_XCA_AX"
+
+            for p in os.scandir(auxfolder):
+                if ads.filename == p.name:
+                    with open(p.path, "rb") as fp:
+                        ext_cal_buf = fp.read()
+
+        if ads.name == "SR GR ADS"  and ads.size > 0:
+            srgr_buf = file_buffer[ads.offset:ads.offset + ads.size]
+
+            r = struct.unpack(">ff5f", srgr_buf[13:41])
+
+
+            srgr_coeffs = list(r[2:])
+            metadata["srgr_coeffs"] = srgr_coeffs
+
+
+
+
+    #
+    c = 299792458
+
+    n_samp = gdal_metadata["line_length"]
+    range_spacing = c / (2 * gdal_metadata["records"]["main_processing_params"]["range_samp_rate"])
+    range_ref = gdal_metadata["records"]["main_processing_params"]["range_ref"]
+    R_first = c * slant_time_first * 1e-9 / 2
+
+
+    
+    spreading_loss = []
+    for n in range(n_samp):
+        R = R_first + n * range_spacing
+        factor = math.sqrt((range_ref / R) ** 3)
+        spreading_loss.append(1/factor)
+
+    cal_factor = gdal_metadata["records"]["main_processing_params"]["calibration_factors"][0]["ext_cal_fact"]
+
+    metadata["cal_factor"] = cal_factor
+    metadata["cal_vector"] = spreading_loss
+
 
     return metadata
