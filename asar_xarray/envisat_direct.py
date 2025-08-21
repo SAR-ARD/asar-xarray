@@ -60,7 +60,6 @@ def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
 
     for i in range(dsd_num):
         ads = EnvisatADS(dsd_buf[i * dsd_size:(i + 1) * dsd_size])
-        #print(ads.name)
         if ads.name == "GEOLOCATION GRID ADS":
             rec_size = 521
             assert ((ads.size // ads.num) == rec_size)
@@ -70,15 +69,13 @@ def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
             # Geolocation Grid ADSRs header
             header_size = 12 + 1 + 4 + 4 + 4
 
-            lats_buffer = geoloc_buf[header_size + 11 * 4 * 3 : header_size + 11 * 4 * 4]
+            lats_buffer = geoloc_buf[header_size + 11 * 4 * 3: header_size + 11 * 4 * 4]
             lons_buffer = geoloc_buf[header_size + 11 * 4 * 4: header_size + 11 * 4 * 5]
-
 
             lats = list(struct.unpack(">11i", lats_buffer))
             lons = list(struct.unpack(">11i", lons_buffer))
             lats = [e * 1e-6 for e in lats]
             lons = [e * 1e-6 for e in lons]
-
 
             # tiepoints, 11 of big endian floats for each of the following:
             # samp numbers, slant range times, angles, lats, longs
@@ -92,18 +89,10 @@ def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
             incidence_angle_middle = \
                 struct.unpack(">f", geoloc_record[incidence_angle_offset:incidence_angle_offset + 4])[0]
 
-
-
             metadata["slant_time_first"] = slant_time_first
             metadata["incidence_angle_center"] = incidence_angle_middle
 
-
-
-        ext_cal_buf = None
         if ads.name == "EXTERNAL CALIBRATION":
-
-            a =  os.path.abspath(__file__)
-
             auxfolder = pathlib.Path(os.path.abspath(__file__)).parent
             auxfolder /= "aux"
             auxfolder /= "ASAR_Auxiliary_Files"
@@ -116,7 +105,7 @@ def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
                         pol = gdal_metadata["mds1_tx_rx_polar"]
                         swath = gdal_metadata["swath"]
                         swath_offset = ord(swath[2]) - ord("1")
-                        pol_offset = {"H/H" : 0, "V/V" :1, "H/V" : 2, "V/H":3}[pol]
+                        pol_offset = {"H/H": 0, "V/V": 1, "H/V": 2, "V/H": 3}[pol]
 
                         # Envisat_Product_Spec_Vol8.pdf
                         # 8.6.2 External Calibration Data
@@ -126,29 +115,25 @@ def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
                         offset += 4
                         offset += 26 * 28 + 4 * 4
 
-                        mid_angles = struct.unpack(">7f", ext_cal_buf[offset:offset+4*7])
+                        mid_angles = struct.unpack(">7f", ext_cal_buf[offset:offset + 4 * 7])
 
                         offset += 8 * 4
 
                         offset += 804 * 4 * swath_offset
                         offset += 201 * 4 * pol_offset
-                        
+
                         antenna_gains = struct.unpack(">201f", ext_cal_buf[offset:offset + 4 * 201])
                         metadata["antenna_ref_elev_angle"] = mid_angles[swath_offset]
                         metadata["antenna_elev_gains"] = antenna_gains
-                        #TODO antenna elev gains not yet applied
+                        # TODO antenna elev gains not yet applied
 
-        if ads.name == "SR GR ADS"  and ads.size > 0:
+        if ads.name == "SR GR ADS" and ads.size > 0:
             srgr_buf = file_buffer[ads.offset:ads.offset + ads.size]
 
             r = struct.unpack(">ff5f", srgr_buf[13:41])
 
-
             srgr_coeffs = list(r[2:])
             metadata["srgr_coeffs"] = srgr_coeffs
-
-
-
 
     # calculate spreading loss compensation
     c = 299792458
@@ -162,12 +147,11 @@ def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
     for n in range(n_samp):
         R = R_first + n * range_spacing
         factor = math.sqrt((range_ref / R) ** 3)
-        spreading_loss.append(1/factor)
+        spreading_loss.append(1 / factor)
 
     cal_factor = gdal_metadata["records"]["main_processing_params"]["calibration_factors"][0]["ext_cal_fact"]
 
     metadata["cal_factor"] = cal_factor
     metadata["cal_vector"] = spreading_loss
-
 
     return metadata

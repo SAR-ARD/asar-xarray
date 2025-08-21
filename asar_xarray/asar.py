@@ -106,8 +106,8 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
         "product_type": product_type,
         "start_time": product_first_line_utc_time,
         "stop_time": product_last_line_utc_time,
-        "range_pixel_spacing" : metadata["range_spacing"],
-        "azimuth_pixel_spacing" : metadata["azimuth_spacing"],
+        "range_pixel_spacing": metadata["range_spacing"],
+        "azimuth_spacing": metadata["azimuth_spacing"],
         "radar_frequency": metadata["records"]["main_processing_params"]["radar_freq"] / 1e9,
         "ascending_node_time": "",
         "azimuth_pixel_spacing": metadata["records"]["main_processing_params"]["azimuth_spacing"],
@@ -116,14 +116,13 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
         "azimuth_time_interval": azimuth_time_interval,
         "image_slant_range_time": image_slant_range_time,
         "range_sampling_rate": range_sampling_rate,
-        "incidence_angle_mid_swath": metadata["direct_parse"]["incidence_angle_center"] * 2 * math.pi / 360 ,
+        "incidence_angle_mid_swath": metadata["direct_parse"]["incidence_angle_center"] * 2 * math.pi / 360,
         "metadata": metadata
     }
 
     azimuth_time = compute_azimuth_time(
         product_first_line_utc_time, product_last_line_utc_time, number_of_lines
     )
-
 
     swap_dims = {"line": "azimuth_time", "pixel": "slant_range_time"}
 
@@ -180,7 +179,7 @@ def get_chirp_parameters(dataset: gdal.Dataset) -> dict[str, Any]:
             new_key = key.replace('CHIRP_PARAMS_ADS_CHIRP_', '').lower()
             params['chirp'][new_key] = float(value)
 
-    #params['elev_corr_factor'] = float(metadata.get('CHIRP_PARAMS_ADS_ELEV_CORR_FACTOR'))
+    # params['elev_corr_factor'] = float(metadata.get('CHIRP_PARAMS_ADS_ELEV_CORR_FACTOR'))
     params['cal_pulse_info'] = get_chirp_cal_pulse_info(metadata)
 
     return params
