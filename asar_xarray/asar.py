@@ -82,16 +82,12 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
     number_of_samples = metadata["line_length"]
     product_first_line_utc_time = metadata["first_line_time"]
     product_last_line_utc_time = metadata["last_line_time"]
-    print(product_first_line_utc_time)
 
     number_of_lines = metadata["records"]["main_processing_params"]["num_output_lines"]
     azimuth_time_interval = metadata["line_time_interval"]
 
-
     range_sampling_rate = metadata["records"]["main_processing_params"]["range_samp_rate"]
     image_slant_range_time = metadata["direct_parse"]["slant_time_first"] * 1e-9
-
-
 
     if metadata["sph_descriptor"] == "Image Mode SLC Image":
         product_type = "SLC"
