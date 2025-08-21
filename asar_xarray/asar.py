@@ -6,6 +6,7 @@ from typing import Dict, Any
 import pandas as pd
 import xarray as xr
 import numpy as np
+import math
 from osgeo import gdal
 from xarray.backends import AbstractDataStore
 from xarray.core.types import ReadBuffer
@@ -84,17 +85,18 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
     print(product_first_line_utc_time)
 
     number_of_lines = metadata["records"]["main_processing_params"]["num_output_lines"]
-    azimuth_time_interval = 1 / metadata["records"]["main_processing_params"]["image_parameters"]["prf_value"][0]
+    azimuth_time_interval = metadata["line_time_interval"]
+
+
     range_sampling_rate = metadata["records"]["main_processing_params"]["range_samp_rate"]
     image_slant_range_time = metadata["direct_parse"]["slant_time_first"] * 1e-9
 
-    number_of_bursts = 0
 
-    product_type = None
-    if "IMS" in filepath:
+
+    if metadata["sph_descriptor"] == "Image Mode SLC Image":
         product_type = "SLC"
-    elif "IMP" in filepath:
-        product_type = "GRD"
+    else:
+        raise RuntimeError("Only Image mode SLC files(IMS) supported for now")
 
     attrs = {
         "family_name": "Envisat",
@@ -108,7 +110,8 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
         "product_type": product_type,
         "start_time": product_first_line_utc_time,
         "stop_time": product_last_line_utc_time,
-
+        "range_pixel_spacing" : metadata["range_spacing"],
+        "azimuth_pixel_spacing" : metadata["azimuth_spacing"],
         "radar_frequency": metadata["records"]["main_processing_params"]["radar_freq"] / 1e9,
         "ascending_node_time": "",
         "azimuth_pixel_spacing": metadata["records"]["main_processing_params"]["azimuth_spacing"],
@@ -117,7 +120,7 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
         "azimuth_time_interval": azimuth_time_interval,
         "image_slant_range_time": image_slant_range_time,
         "range_sampling_rate": range_sampling_rate,
-        "incidence_angle_mid_swath": metadata["direct_parse"]["incidence_angle_center"],
+        "incidence_angle_mid_swath": metadata["direct_parse"]["incidence_angle_center"] * 2 * math.pi / 360 ,
         "metadata": metadata
     }
 
@@ -125,12 +128,8 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
         product_first_line_utc_time, product_last_line_utc_time, number_of_lines
     )
 
-    if number_of_bursts == 0:
-        swap_dims = {"line": "azimuth_time", "pixel": "slant_range_time"}
-    else:
-        raise NotImplementedError(
-            "Burst processing is not implemented yet."
-        )
+
+    swap_dims = {"line": "azimuth_time", "pixel": "slant_range_time"}
 
     coords: dict[str, Any] = {
         "pixel": np.arange(0, number_of_samples, dtype=int),

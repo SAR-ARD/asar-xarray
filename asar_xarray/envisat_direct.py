@@ -113,6 +113,30 @@ def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
                 if ads.filename == p.name:
                     with open(p.path, "rb") as fp:
                         ext_cal_buf = fp.read()
+                        pol = gdal_metadata["mds1_tx_rx_polar"]
+                        swath = gdal_metadata["swath"]
+                        swath_offset = ord(swath[2]) - ord("1")
+                        pol_offset = {"H/H" : 0, "V/V" :1, "H/V" : 2, "V/H":3}[pol]
+
+                        # Envisat_Product_Spec_Vol8.pdf
+                        # 8.6.2 External Calibration Data
+                        offset = 1247 + 378
+
+                        offset += 12
+                        offset += 4
+                        offset += 26 * 28 + 4 * 4
+
+                        mid_angles = struct.unpack(">7f", ext_cal_buf[offset:offset+4*7])
+
+                        offset += 8 * 4
+
+                        offset += 804 * 4 * swath_offset
+                        offset += 201 * 4 * pol_offset
+                        
+                        antenna_gains = struct.unpack(">201f", ext_cal_buf[offset:offset + 4 * 201])
+                        metadata["antenna_ref_elev_angle"] = mid_angles[swath_offset]
+                        metadata["antenna_elev_gains"] = antenna_gains
+                        #TODO antenna elev gains not yet applied
 
         if ads.name == "SR GR ADS"  and ads.size > 0:
             srgr_buf = file_buffer[ads.offset:ads.offset + ads.size]
@@ -126,7 +150,7 @@ def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
 
 
 
-    #
+    # calculate spreading loss compensation
     c = 299792458
 
     n_samp = gdal_metadata["line_length"]
@@ -134,8 +158,6 @@ def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
     range_ref = gdal_metadata["records"]["main_processing_params"]["range_ref"]
     R_first = c * slant_time_first * 1e-9 / 2
 
-
-    
     spreading_loss = []
     for n in range(n_samp):
         R = R_first + n * range_spacing
