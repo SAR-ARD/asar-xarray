@@ -32,7 +32,7 @@ class EnvisatADS:
         return "Envisat ADS: \"{}\" {} {} {}".format(self.name, self.offset, self.size, self.num)
 
 
-def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
+def parse_direct(path: str, gdal_metadata: dict[str, Any]) -> dict[str, Any]:
     """
     Parse an Envisat product file and extract relevant metadata fields.
 
@@ -43,7 +43,6 @@ def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
     returns: Dictionary containing extracted metadata fields.
     """
     metadata = {}
-    file_buffer = None
     with open(path, "rb") as fp:
         file_buffer = fp.read()
 

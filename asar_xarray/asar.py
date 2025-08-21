@@ -35,7 +35,8 @@ def get_metadata(gdal_dataset: gdal.Dataset) -> Dict[str, Any]:
     return attributes
 
 
-def open_asar_dataset(filepath: str | os.PathLike[Any] | ReadBuffer[Any] | AbstractDataStore) -> xr.Dataset:
+def open_asar_dataset(
+        filepath: str | os.PathLike[Any] | ReadBuffer[Any] | bytes | memoryview | AbstractDataStore) -> xr.Dataset:
     """
     Open an ASAR dataset and converts it into an xarray Dataset.
 

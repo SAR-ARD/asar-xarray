@@ -14,7 +14,7 @@ class AsarBackend(xr.backends.common.BackendEntrypoint):
     """Xarray backend of ESR/ASAR satellite data."""
 
     def open_dataset(self,
-                     filename_or_obj: str | os.PathLike[Any] | ReadBuffer[Any] | AbstractDataStore,
+                     filename_or_obj: str | os.PathLike[Any] | ReadBuffer[Any] | bytes | memoryview | AbstractDataStore,
                      *,
                      drop_variables: str | Iterable[str] | None = None, ) -> xr.Dataset:
         """
