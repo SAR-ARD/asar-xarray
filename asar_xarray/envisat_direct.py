@@ -42,7 +42,7 @@ def parse_direct(path: str, gdal_metadata: dict[str, Any]) -> dict[str, Any]:
 
     returns: Dictionary containing extracted metadata fields.
     """
-    metadata = {}
+    metadata: dict[str, Any] = {}
     with open(path, "rb") as fp:
         file_buffer = fp.read()
 
@@ -186,7 +186,7 @@ def extract_external_calibration_metadata(ads: EnvisatADS, gdal_metadata: dict[s
                 metadata["antenna_elev_gains"] = antenna_gains
 
 
-def extract_srgr_coeffs(ads, file_buffer):
+def extract_srgr_coeffs(ads: EnvisatADS, file_buffer: bytes) -> list[float]:
     """
     Extract SRGR (Slant Range to Ground Range) coefficients from the SR GR ADS record.
 
