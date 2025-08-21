@@ -180,7 +180,6 @@ def get_chirp_parameters(dataset: gdal.Dataset) -> dict[str, Any]:
             new_key = key.replace('CHIRP_PARAMS_ADS_CHIRP_', '').lower()
             params['chirp'][new_key] = float(value)
 
-    # params['elev_corr_factor'] = float(metadata.get('CHIRP_PARAMS_ADS_ELEV_CORR_FACTOR'))
     params['cal_pulse_info'] = get_chirp_cal_pulse_info(metadata)
 
     return params
