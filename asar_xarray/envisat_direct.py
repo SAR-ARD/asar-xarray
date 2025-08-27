@@ -4,6 +4,7 @@ from typing import Any
 import os
 import math
 import pathlib
+import numpy as np
 
 
 def parse_int(s: str) -> int:
@@ -12,6 +13,35 @@ def parse_int(s: str) -> int:
     s = s[s.index("=") + 1:]
     # print(s)
     return int(s)
+
+
+
+def calc_distance(latitude, longitude, altitude=0.0):
+    """Lat/Lon to distance from earth center"""
+    DTOR = math.pi / 180.0
+    RTOD = 180 / math.pi
+    A = 6378137.0
+    B = 6356752.3142451794975639665996337
+    FLAT_EARTH_COEF = 1.0 / ((A - B) / A)
+    E2 = 2.0 / FLAT_EARTH_COEF - 1.0 / (FLAT_EARTH_COEF * FLAT_EARTH_COEF)
+    EP2 = E2 / (1 - E2)
+
+    lat = latitude * DTOR
+    lon = longitude * DTOR
+
+    sin_lat = math.sin(lat)
+    cos_lat = math.cos(lat)
+
+    N = (A / math.sqrt(1.0 - E2 * sin_lat * sin_lat))
+    NcosLat = (N + altitude) * cos_lat
+
+    sin_lon = math.sin(lon)
+    cos_lon = math.cos(lon)
+
+    x_pos = NcosLat * cos_lon
+    y_pos = NcosLat * sin_lon
+    z_pos = (N + altitude - E2 * N) * sin_lat
+    return math.sqrt(x_pos**2 + y_pos**2 + z_pos**2)
 
 
 class EnvisatADS:
@@ -102,12 +132,16 @@ def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
         ext_cal_buf = None
         if ads.name == "EXTERNAL CALIBRATION":
 
-            a =  os.path.abspath(__file__)
-
             auxfolder = pathlib.Path(os.path.abspath(__file__)).parent
+            prod_name = gdal_metadata["product"]
             auxfolder /= "aux"
-            auxfolder /= "ASAR_Auxiliary_Files"
-            auxfolder /= "ASA_XCA_AX"
+            if ".N1" in prod_name:
+                auxfolder /= "ASAR_Auxiliary_Files"
+                auxfolder /= "ASA_XCA_AX"
+            elif ".E1" in prod_name:
+                auxfolder /= "ERS1"
+            elif ".E2" in prod_name:
+                auxfolder /= "ERS2"
 
             for p in os.scandir(auxfolder):
                 if ads.filename == p.name:
@@ -132,11 +166,9 @@ def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
 
                         offset += 804 * 4 * swath_offset
                         offset += 201 * 4 * pol_offset
-                        
+
                         antenna_gains = struct.unpack(">201f", ext_cal_buf[offset:offset + 4 * 201])
                         metadata["antenna_ref_elev_angle"] = mid_angles[swath_offset]
-                        metadata["antenna_elev_gains"] = antenna_gains
-                        #TODO antenna elev gains not yet applied
 
         if ads.name == "SR GR ADS"  and ads.size > 0:
             srgr_buf = file_buffer[ads.offset:ads.offset + ads.size]
@@ -150,13 +182,58 @@ def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
 
 
 
-    # calculate spreading loss compensation
-    c = 299792458
+    
 
+    # antenna gain
+    c = 299792458
     n_samp = gdal_metadata["line_length"]
+    R_first = c * slant_time_first * 1e-9 / 2
     range_spacing = c / (2 * gdal_metadata["records"]["main_processing_params"]["range_samp_rate"])
     range_ref = gdal_metadata["records"]["main_processing_params"]["range_ref"]
     R_first = c * slant_time_first * 1e-9 / 2
+
+    osv = gdal_metadata["records"]["main_processing_params"]["orbit_state_vectors"]
+
+    sat_x = osv[0]["x_pos_1"] * 1e-2
+    sat_y = osv[0]["y_pos_1"] * 1e-2
+    sat_z = osv[0]["z_pos_1"] * 1e-2
+
+    gain_arr = []
+    for n in range(n_samp):
+        # https://github.com/senbox-org/microwave-toolbox/blob/master/sar-op-calibration/src/main/java/eu/esa/sar/calibration/gpf/calibrators/ASARCalibrator.java
+        R = R_first + n * range_spacing
+        n_geogrid = len(lats)
+        geo_interp_idx = (n / n_samp) * (len(lats) - 1)
+        idx = int(geo_interp_idx)
+        fract = geo_interp_idx % 1
+        #interpolate geogrid to match first line geogrid to first OSV
+        lat = lats[idx] + (lats[idx+1] - lats[idx]) * fract
+        lon = lons[idx] + (lons[idx+1] - lons[idx]) * fract
+
+        sar_dis = math.sqrt(sat_x**2 + sat_y**2 + sat_z**2)
+
+        distance = calc_distance(lat, lon)
+
+        # elevation angle, cosine law from three sides, slant range, earth center to satellite, earth center to target
+        angle_cos = (R * R + sar_dis * sar_dis - distance * distance) / (2 * R * sar_dis)
+        elev_angle = np.rad2deg(math.acos(angle_cos))
+
+        # find the gain from LUT, with 201 gains against reference elevation angle with 0.05 degree steps
+        elev_idx = int((elev_angle - metadata["antenna_ref_elev_angle"]) / 0.05)
+        elev_idx += 100
+        gain = 1.0
+        if elev_idx >= 0 and elev_idx <= len(antenna_gains):
+            # dB -> linear
+            gain = math.pow(10, antenna_gains[elev_idx] / 10)
+
+        gain_arr.append(gain)
+
+
+
+
+
+
+    # calculate spreading loss compensation
 
     spreading_loss = []
     for n in range(n_samp):
@@ -167,7 +244,7 @@ def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
     cal_factor = gdal_metadata["records"]["main_processing_params"]["calibration_factors"][0]["ext_cal_fact"]
 
     metadata["cal_factor"] = cal_factor
-    metadata["cal_vector"] = spreading_loss
+    metadata["cal_vector"] = np.array(spreading_loss) * np.array(gain_arr)
 
 
     return metadata
