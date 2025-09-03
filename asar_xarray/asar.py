@@ -89,10 +89,16 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
     range_sampling_rate = metadata["records"]["main_processing_params"]["range_samp_rate"]
     image_slant_range_time = metadata["direct_parse"]["slant_time_first"] * 1e-9
 
-    if metadata["sph_descriptor"] == "Image Mode SLC Image":
+    range_pixel_spacing = metadata["records"]["main_processing_params"]["range_spacing"]
+
+    product_str = metadata["sph_descriptor"]
+
+    if product_str == "Image Mode SLC Image":
         product_type = "SLC"
+    elif product_str == "Image Mode Precision Image":
+        product_type = "GRD"
     else:
-        raise RuntimeError("Only Image mode SLC files(IMS) supported for now")
+        raise RuntimeError("Only Image mode files supported(IMS & IMP) supported for now")
 
     attrs = {
         "family_name": "Envisat",
@@ -106,8 +112,8 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
         "product_type": product_type,
         "start_time": product_first_line_utc_time,
         "stop_time": product_last_line_utc_time,
-        "range_pixel_spacing" : metadata["range_spacing"],
-        "azimuth_pixel_spacing" : metadata["azimuth_spacing"],
+        "range_pixel_spacing": metadata["range_spacing"],
+        "azimuth_pixel_spacing": metadata["azimuth_spacing"],
         "radar_frequency": metadata["records"]["main_processing_params"]["radar_freq"] / 1e9,
         "ascending_node_time": "",
         "azimuth_pixel_spacing": metadata["records"]["main_processing_params"]["azimuth_spacing"],
@@ -116,14 +122,13 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
         "azimuth_time_interval": azimuth_time_interval,
         "image_slant_range_time": image_slant_range_time,
         "range_sampling_rate": range_sampling_rate,
-        "incidence_angle_mid_swath": metadata["direct_parse"]["incidence_angle_center"] * 2 * math.pi / 360 ,
+        "incidence_angle_mid_swath": metadata["direct_parse"]["incidence_angle_center"] * 2 * math.pi / 360,
         "metadata": metadata
     }
 
     azimuth_time = compute_azimuth_time(
         product_first_line_utc_time, product_last_line_utc_time, number_of_lines
     )
-
 
     swap_dims = {"line": "azimuth_time", "pixel": "slant_range_time"}
 
@@ -140,12 +145,34 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
         ),
     }
 
-    slant_range_time = np.linspace(
-        image_slant_range_time,
-        image_slant_range_time + (number_of_samples - 1) / range_sampling_rate,
-        number_of_samples,
-    )
-    coords["slant_range_time"] = ("pixel", slant_range_time)
+    if product_type == "SLC":
+        slant_range_time = np.linspace(
+            image_slant_range_time,
+            image_slant_range_time + (number_of_samples - 1) / range_sampling_rate,
+            number_of_samples,
+        )
+        coords["slant_range_time"] = ("pixel", slant_range_time)
+    else:
+
+        # generate slant range times from ground ranges for ground range products
+        # this is easier due to the Envisat only having GRSR metadata unlike Sentinel1
+        # however xarray/Sarsen handle GRD conversion differently for S1
+        ground_range = np.linspace(
+            0,
+            range_pixel_spacing * (number_of_samples - 1),
+            number_of_samples,
+        )
+
+        # numpy polyval expects the polynomial top be highest ranked first
+        coeffs = list(reversed(metadata["direct_parse"]["grsr_coeffs"]))
+
+        slant_ranges = np.polyval(coeffs, ground_range)
+        slant_ranges *= 2
+
+        c = 299792458
+        slant_range_times = slant_ranges / c
+
+        coords["slant_range_time"] = ("pixel", slant_range_times)
 
     data = xr.open_dataarray(filepath, engine='rasterio')
     data.encoding.clear()
@@ -180,7 +207,7 @@ def get_chirp_parameters(dataset: gdal.Dataset) -> dict[str, Any]:
             new_key = key.replace('CHIRP_PARAMS_ADS_CHIRP_', '').lower()
             params['chirp'][new_key] = float(value)
 
-    #params['elev_corr_factor'] = float(metadata.get('CHIRP_PARAMS_ADS_ELEV_CORR_FACTOR'))
+    # params['elev_corr_factor'] = float(metadata.get('CHIRP_PARAMS_ADS_ELEV_CORR_FACTOR'))
     params['cal_pulse_info'] = get_chirp_cal_pulse_info(metadata)
 
     return params

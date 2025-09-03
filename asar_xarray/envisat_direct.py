@@ -175,9 +175,10 @@ def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
 
             r = struct.unpack(">ff5f", srgr_buf[13:41])
 
-
+            # Envisat file specification says it is SR/GR Conversion ADSR,
+            # however the polynomial is for GR to SR...
             srgr_coeffs = list(r[2:])
-            metadata["srgr_coeffs"] = srgr_coeffs
+            metadata["grsr_coeffs"] = srgr_coeffs
 
 
 
@@ -187,59 +188,69 @@ def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
     # antenna gain
     c = 299792458
     n_samp = gdal_metadata["line_length"]
-    R_first = c * slant_time_first * 1e-9 / 2
-    range_spacing = c / (2 * gdal_metadata["records"]["main_processing_params"]["range_samp_rate"])
-    range_ref = gdal_metadata["records"]["main_processing_params"]["range_ref"]
-    R_first = c * slant_time_first * 1e-9 / 2
 
-    osv = gdal_metadata["records"]["main_processing_params"]["orbit_state_vectors"]
-
-    sat_x = osv[0]["x_pos_1"] * 1e-2
-    sat_y = osv[0]["y_pos_1"] * 1e-2
-    sat_z = osv[0]["z_pos_1"] * 1e-2
 
     gain_arr = []
-    for n in range(n_samp):
-        # https://github.com/senbox-org/microwave-toolbox/blob/master/sar-op-calibration/src/main/java/eu/esa/sar/calibration/gpf/calibrators/ASARCalibrator.java
-        R = R_first + n * range_spacing
-        n_geogrid = len(lats)
-        geo_interp_idx = (n / n_samp) * (len(lats) - 1)
-        idx = int(geo_interp_idx)
-        fract = geo_interp_idx % 1
-        #interpolate geogrid to match first line geogrid to first OSV
-        lat = lats[idx] + (lats[idx+1] - lats[idx]) * fract
-        lon = lons[idx] + (lons[idx+1] - lons[idx]) * fract
+    if gdal_metadata["sample_type"] == "DETECTED":
+        gain_arr = np.ones(n_samp)
+        spreading_loss = np.ones(n_samp)
+    else:
+        # antenna gain
+        c = 299792458
+        R_first = c * slant_time_first * 1e-9 / 2
+        range_spacing = c / (2 * gdal_metadata["records"]["main_processing_params"]["range_samp_rate"])
+        range_ref = gdal_metadata["records"]["main_processing_params"]["range_ref"]
+        R_first = c * slant_time_first * 1e-9 / 2
 
-        sar_dis = math.sqrt(sat_x**2 + sat_y**2 + sat_z**2)
+        osv = gdal_metadata["records"]["main_processing_params"]["orbit_state_vectors"]
 
-        distance = calc_distance(lat, lon)
+        sat_x = osv[0]["x_pos_1"] * 1e-2
+        sat_y = osv[0]["y_pos_1"] * 1e-2
+        sat_z = osv[0]["z_pos_1"] * 1e-2
 
-        # elevation angle, cosine law from three sides, slant range, earth center to satellite, earth center to target
-        angle_cos = (R * R + sar_dis * sar_dis - distance * distance) / (2 * R * sar_dis)
-        elev_angle = np.rad2deg(math.acos(angle_cos))
+        for n in range(n_samp):
+            # https://github.com/senbox-org/microwave-toolbox/blob/master/sar-op-calibration/src/main/java/eu/esa/sar/calibration/gpf/calibrators/ASARCalibrator.java
+            R = R_first + n * range_spacing
+            n_geogrid = len(lats)
+            geo_interp_idx = (n / n_samp) * (len(lats) - 1)
+            idx = int(geo_interp_idx)
+            fract = geo_interp_idx % 1
+            #interpolate geogrid to match first line geogrid to first OSV
+            lat = lats[idx] + (lats[idx+1] - lats[idx]) * fract
+            lon = lons[idx] + (lons[idx+1] - lons[idx]) * fract
 
-        # find the gain from LUT, with 201 gains against reference elevation angle with 0.05 degree steps
-        elev_idx = int((elev_angle - metadata["antenna_ref_elev_angle"]) / 0.05)
-        elev_idx += 100
-        gain = 1.0
-        if elev_idx >= 0 and elev_idx <= len(antenna_gains):
-            # dB -> linear
-            gain = math.pow(10, antenna_gains[elev_idx] / 10)
+            sar_dis = math.sqrt(sat_x**2 + sat_y**2 + sat_z**2)
 
-        gain_arr.append(gain)
+            distance = calc_distance(lat, lon)
+
+            # elevation angle, cosine law from three sides, slant range, earth center to satellite, earth center to target
+            angle_cos = (R * R + sar_dis * sar_dis - distance * distance) / (2 * R * sar_dis)
+            elev_angle = np.rad2deg(math.acos(angle_cos))
+
+            # find the gain from LUT, with 201 gains against reference elevation angle with 0.05 degree steps
+            elev_idx = int((elev_angle - metadata["antenna_ref_elev_angle"]) / 0.05)
+            elev_idx += 100
+            gain = 1.0
+            if elev_idx >= 0 and elev_idx <= len(antenna_gains):
+                # dB -> linear
+                gain = math.pow(10, antenna_gains[elev_idx] / 10)
+
+            gain_arr.append(1/gain)
 
 
 
 
 
 
-    # calculate spreading loss compensation
+        # calculate spreading loss compensation
 
-    spreading_loss = []
-    for n in range(n_samp):
-        R = R_first + n * range_spacing
-        factor = math.sqrt((range_ref / R) ** 3)
-        spreading_loss.append(1/factor)
+        spreading_loss = []
+        for n in range(n_samp):
+            R = R_first + n * range_spacing
+            factor = math.sqrt((range_ref / R) ** 3)
+            spreading_loss.append(1/factor)
+
+
 
     cal_factor = gdal_metadata["records"]["main_processing_params"]["calibration_factors"][0]["ext_cal_fact"]
 
