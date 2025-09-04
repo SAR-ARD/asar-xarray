@@ -25,7 +25,7 @@ def parse_int(s: str) -> int:
     return int(s)
 
 
-def calc_distance(latitude, longitude, altitude=0.0):
+def __calc_distance(latitude, longitude, altitude=0.0):
     """
     Calculate the distance from the Earth's center to a point specified by latitude, longitude, and altitude.
 
@@ -107,16 +107,8 @@ def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
     dsd_num = 18
     dsd_buf = sph_buf[sph_size - dsd_size * dsd_num:]
 
-    antenna_gains = ()
-    slant_time_first = []
-
-    for i in range(dsd_num):
-        ads = EnvisatADS(dsd_buf[i * dsd_size:(i + 1) * dsd_size])
-        lats, lons, slant_time_first = process_geolocation_grid_ads(ads, file_buffer, metadata)
-
-        antenna_gains = process_cal_ads(ads, gdal_metadata, metadata)
-
-        process_sr_gr_ads(ads, file_buffer, metadata)
+    antenna_gains, lats, lons, slant_time_first = __process_ads(dsd_buf, dsd_num, dsd_size, file_buffer,
+                                                                gdal_metadata, metadata)
 
     # antenna gain
     n_samp = gdal_metadata["line_length"]
@@ -150,7 +142,7 @@ def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
 
             sar_dis = math.sqrt(sat_x ** 2 + sat_y ** 2 + sat_z ** 2)
 
-            distance = calc_distance(lat, lon)
+            distance = __calc_distance(lat, lon)
 
             # elevation angle, cosine law from three sides, slant range,
             # earth center to satellite, earth center to target
@@ -182,8 +174,44 @@ def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
     return metadata
 
 
-def process_geolocation_grid_ads(ads: EnvisatADS, file_buffer: bytes, metadata: dict[Any, Any]) -> tuple[
-        Any, list[float | Any], list[float | Any]]:
+def __process_ads(dsd_buf: bytes, dsd_num: int, dsd_size: int, file_buffer: bytes,
+                  gdal_metadata, metadata: dict[Any, Any]) -> tuple[float, Any, list[float | Any], tuple[Any, ...]]:
+    """
+    Process the Annotation Data Sets (ADS) in the Envisat product file.
+
+    Parameters
+    ----------
+    dsd_buf Buffer containing the ADS descriptors
+    dsd_num Number of ADS descriptors
+    dsd_size Size of each ADS descriptor
+    file_buffer File buffer
+    gdal_metadata Metadata extracted using GDAL
+    metadata Metadata dictionary to populate
+
+    Returns
+    -------
+    Tuple containing antenna gains, latitudes, longitudes, and the first slant time.
+    """
+    lats = []
+    lons = []
+    slant_time_first = 0.0
+    antenna_gains = ()
+    for i in range(dsd_num):
+        ads = EnvisatADS(dsd_buf[i * dsd_size:(i + 1) * dsd_size])
+        lats_new, lons_new, slant_time_first_new = __process_geolocation_grid_ads(ads, file_buffer, metadata)
+        lats = lats_new if lats_new else lats
+        lons = lons_new if lons_new else lons
+        slant_time_first = slant_time_first_new if slant_time_first_new else slant_time_first
+
+        antenna_gains_new = __process_cal_ads(ads, gdal_metadata, metadata)
+        antenna_gains = antenna_gains_new if antenna_gains_new else antenna_gains
+
+        process_sr_gr_ads(ads, file_buffer, metadata)
+    return antenna_gains, lats, lons, slant_time_first
+
+
+def __process_geolocation_grid_ads(ads: EnvisatADS, file_buffer: bytes, metadata: dict[Any, Any]) -> tuple[
+        Any, list[float | Any], float]:
     """
     Process the Geolocation Grid ADS to extract latitude, longitude, slant time, and incidence angle information.
 
@@ -228,10 +256,11 @@ def process_geolocation_grid_ads(ads: EnvisatADS, file_buffer: bytes, metadata: 
 
         metadata["slant_time_first"] = slant_time_first
         metadata["incidence_angle_center"] = incidence_angle_middle
-    return lats, lons, slant_time_first
+        return lats, lons, slant_time_first
+    return [], [], 0.0
 
 
-def process_cal_ads(ads: EnvisatADS, gdal_metadata, metadata: dict[Any, Any]) -> tuple[Any, ...]:
+def __process_cal_ads(ads: EnvisatADS, gdal_metadata, metadata: dict[Any, Any]) -> tuple[Any, ...]:
     """
     Process the EXTERNAL CALIBRATION ADS to extract antenna gain information.
 
@@ -245,6 +274,7 @@ def process_cal_ads(ads: EnvisatADS, gdal_metadata, metadata: dict[Any, Any]) ->
     -------
     Tuple containing antenna gains.
     """
+    antenna_gains = ()
     if ads.name == "EXTERNAL CALIBRATION":
 
         aux_folder = pathlib.Path(os.path.abspath(__file__)).parent
