@@ -81,7 +81,7 @@ class EnvisatADS:
         return "Envisat ADS: \"{}\" {} {} {}".format(self.name, self.offset, self.size, self.num)
 
 
-def parse_direct(path: str, gdal_metadata: dict[str, Any]) -> dict[str, Any]:
+def parse_direct(path: str, gdal_metadata: dict[str, Any], polarization) -> dict[str, Any]:
     """
     Parse an Envisat product file and extract relevant metadata fields.
 
@@ -289,13 +289,12 @@ def __process_cal_ads(ads: EnvisatADS, gdal_metadata: dict[str, Any], metadata: 
             aux_folder /= "ERS2"
 
         for p in os.scandir(aux_folder):
-            if ads.filename == p.name:
-                with open(p.path, "rb") as fp:
-                    ext_cal_buf = fp.read()
-                    pol = gdal_metadata["mds1_tx_rx_polar"]
-                    swath = gdal_metadata["swath"]
-                    swath_offset = ord(swath[2]) - ord("1")
-                    pol_offset = {"H/H": 0, "V/V": 1, "H/V": 2, "V/H": 3}[pol]
+                if ads.filename == p.name:
+                    with open(p.path, "rb") as fp:
+                        ext_cal_buf = fp.read()
+                        swath = gdal_metadata["swath"]
+                        swath_offset = ord(swath[2]) - ord("1")
+                        pol_offset = {"H/H" : 0, "V/V" :1, "H/V" : 2, "V/H":3}[polarization]
 
                     # Envisat_Product_Spec_Vol8.pdf
                     # 8.6.2 External Calibration Data
