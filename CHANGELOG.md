@@ -1,6 +1,24 @@
 # CHANGELOG
 
 
+## v1.5.0 (2025-09-04)
+
+### Features
+
+- Ap mode support ([#52](https://github.com/Achaad/asar-xarray/pull/52),
+  [`8780055`](https://github.com/Achaad/asar-xarray/commit/87800552bd40c5e54a5b6dd70d736b54f4661a1e))
+
+* AP mode support.
+
+Can properly open process APS and APP files.
+
+---------
+
+Co-authored-by: Priit Pender <priit@alloca.ee>
+
+Co-authored-by: Achaad <achaad@achaad.eu>
+
+
 ## v1.4.2 (2025-09-04)
 
 ### Bug Fixes
