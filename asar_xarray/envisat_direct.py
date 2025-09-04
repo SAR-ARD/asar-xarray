@@ -81,13 +81,14 @@ class EnvisatADS:
         return "Envisat ADS: \"{}\" {} {} {}".format(self.name, self.offset, self.size, self.num)
 
 
-def parse_direct(path: str, gdal_metadata: dict[str, Any], polarization) -> dict[str, Any]:
+def parse_direct(path: str, gdal_metadata: dict[str, Any], polarization: str) -> dict[str, Any]:
     """
     Parse an Envisat product file and extract relevant metadata fields.
 
     Args:
     ----
         path (str): Path to the Envisat product file.
+        polarization (str): Polarization string (e.g., "H/H", "V/V", "H/V", "V/H").
 
     returns: Dictionary containing extracted metadata fields.
     """
@@ -108,7 +109,7 @@ def parse_direct(path: str, gdal_metadata: dict[str, Any], polarization) -> dict
     dsd_buf = sph_buf[sph_size - dsd_size * dsd_num:]
 
     antenna_gains, lats, lons, slant_time_first = __process_ads(dsd_buf, dsd_num, dsd_size, file_buffer,
-                                                                gdal_metadata, metadata)
+                                                                gdal_metadata, metadata, polarization)
 
     # antenna gain
     n_samp = gdal_metadata["line_length"]
@@ -174,7 +175,7 @@ def parse_direct(path: str, gdal_metadata: dict[str, Any], polarization) -> dict
 
 
 def __process_ads(dsd_buf: bytes, dsd_num: int, dsd_size: int, file_buffer: bytes,
-                  gdal_metadata: dict[str, Any], metadata: dict[Any, Any]) -> tuple[
+                  gdal_metadata: dict[str, Any], metadata: dict[Any, Any], polarization: str) -> tuple[
         tuple[float, ...], Any, list[float | Any], float]:
     """
     Process the Annotation Data Sets (ADS) in the Envisat product file.
@@ -187,6 +188,7 @@ def __process_ads(dsd_buf: bytes, dsd_num: int, dsd_size: int, file_buffer: byte
     file_buffer File buffer
     gdal_metadata Metadata extracted using GDAL
     metadata Metadata dictionary to populate
+    polarization Polarization string (e.g., "H/H", "V/V", "H/V", "V/H")
 
     Returns
     -------
@@ -203,7 +205,7 @@ def __process_ads(dsd_buf: bytes, dsd_num: int, dsd_size: int, file_buffer: byte
         lons = lons_new if lons_new else lons
         slant_time_first = slant_time_first_new if slant_time_first_new else slant_time_first
 
-        antenna_gains_new = __process_cal_ads(ads, gdal_metadata, metadata)
+        antenna_gains_new = __process_cal_ads(ads, gdal_metadata, metadata, polarization)
         antenna_gains = antenna_gains_new if antenna_gains_new else antenna_gains
 
         process_sr_gr_ads(ads, file_buffer, metadata)
@@ -260,7 +262,8 @@ def __process_geolocation_grid_ads(ads: EnvisatADS, file_buffer: bytes, metadata
     return [], [], 0.0
 
 
-def __process_cal_ads(ads: EnvisatADS, gdal_metadata: dict[str, Any], metadata: dict[Any, Any]) -> tuple[float, ...]:
+def __process_cal_ads(ads: EnvisatADS, gdal_metadata: dict[str, Any], metadata: dict[Any, Any], polarization: str) -> \
+        tuple[float, ...]:
     """
     Process the EXTERNAL CALIBRATION ADS to extract antenna gain information.
 
@@ -269,6 +272,7 @@ def __process_cal_ads(ads: EnvisatADS, gdal_metadata: dict[str, Any], metadata: 
     ads EnvisatADS
     gdal_metadata Metadata extracted using GDAL
     metadata Metadata dictionary to populate
+    polarization Polarization string (e.g., "H/H", "V/V", "H/V", "V/H")
 
     Returns
     -------
@@ -289,30 +293,30 @@ def __process_cal_ads(ads: EnvisatADS, gdal_metadata: dict[str, Any], metadata: 
             aux_folder /= "ERS2"
 
         for p in os.scandir(aux_folder):
-                if ads.filename == p.name:
-                    with open(p.path, "rb") as fp:
-                        ext_cal_buf = fp.read()
-                        swath = gdal_metadata["swath"]
-                        swath_offset = ord(swath[2]) - ord("1")
-                        pol_offset = {"H/H" : 0, "V/V" :1, "H/V" : 2, "V/H":3}[polarization]
+            if ads.filename == p.name:
+                with open(p.path, "rb") as fp:
+                    ext_cal_buf = fp.read()
+                    swath = gdal_metadata["swath"]
+                    swath_offset = ord(swath[2]) - ord("1")
+                    pol_offset = {"H/H": 0, "V/V": 1, "H/V": 2, "V/H": 3}[polarization]
 
-                    # Envisat_Product_Spec_Vol8.pdf
-                    # 8.6.2 External Calibration Data
-                    offset = 1247 + 378
+                # Envisat_Product_Spec_Vol8.pdf
+                # 8.6.2 External Calibration Data
+                offset = 1247 + 378
 
-                    offset += 12
-                    offset += 4
-                    offset += 26 * 28 + 4 * 4
+                offset += 12
+                offset += 4
+                offset += 26 * 28 + 4 * 4
 
-                    mid_angles = struct.unpack(">7f", ext_cal_buf[offset:offset + 4 * 7])
+                mid_angles = struct.unpack(">7f", ext_cal_buf[offset:offset + 4 * 7])
 
-                    offset += 8 * 4
+                offset += 8 * 4
 
-                    offset += 804 * 4 * swath_offset
-                    offset += 201 * 4 * pol_offset
+                offset += 804 * 4 * swath_offset
+                offset += 201 * 4 * pol_offset
 
-                    antenna_gains = struct.unpack(">201f", ext_cal_buf[offset:offset + 4 * 201])
-                    metadata["antenna_ref_elev_angle"] = mid_angles[swath_offset]
+                antenna_gains = struct.unpack(">201f", ext_cal_buf[offset:offset + 4 * 201])
+                metadata["antenna_ref_elev_angle"] = mid_angles[swath_offset]
     return antenna_gains
 
 
