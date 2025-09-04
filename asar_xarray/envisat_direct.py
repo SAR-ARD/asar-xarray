@@ -25,7 +25,7 @@ def parse_int(s: str) -> int:
     return int(s)
 
 
-def __calc_distance(latitude, longitude, altitude=0.0):
+def __calc_distance(latitude: float, longitude: float, altitude: float = 0.0) -> float:
     """
     Calculate the distance from the Earth's center to a point specified by latitude, longitude, and altitude.
 
@@ -81,7 +81,7 @@ class EnvisatADS:
         return "Envisat ADS: \"{}\" {} {} {}".format(self.name, self.offset, self.size, self.num)
 
 
-def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
+def parse_direct(path: str, gdal_metadata: dict[str, Any]) -> dict[str, Any]:
     """
     Parse an Envisat product file and extract relevant metadata fields.
 
@@ -91,7 +91,7 @@ def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
 
     returns: Dictionary containing extracted metadata fields.
     """
-    metadata = {}
+    metadata: dict[str, Any] = {}
     file_buffer = None
     with open(path, "rb") as fp:
         file_buffer = fp.read()
@@ -112,8 +112,8 @@ def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
 
     # antenna gain
     n_samp = gdal_metadata["line_length"]
-
-    gain_arr = []
+    spreading_loss: np.ndarray[Any] = np.array([])
+    gain_arr: np.ndarray[Any] = np.array([])
     if gdal_metadata["sample_type"] == "DETECTED":
         gain_arr = np.ones(n_samp)
         spreading_loss = np.ones(n_samp)
@@ -157,14 +157,13 @@ def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
                 # dB -> linear
                 gain = math.pow(10, antenna_gains[elev_idx] / 10)
 
-            gain_arr.append(1 / gain)
+            np.append(gain_arr, 1 / gain)
 
         # calculate spreading loss compensation
-        spreading_loss = []
         for n in range(n_samp):
             r = r_first + n * range_spacing
             factor = math.sqrt((range_ref / r) ** 3)
-            spreading_loss.append(1 / factor)
+            np.append(spreading_loss, 1 / factor)
 
     cal_factor = gdal_metadata["records"]["main_processing_params"]["calibration_factors"][0]["ext_cal_fact"]
 
@@ -175,7 +174,8 @@ def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
 
 
 def __process_ads(dsd_buf: bytes, dsd_num: int, dsd_size: int, file_buffer: bytes,
-                  gdal_metadata, metadata: dict[Any, Any]) -> tuple[float, Any, list[float | Any], tuple[Any, ...]]:
+                  gdal_metadata: dict[str, Any], metadata: dict[Any, Any]) -> tuple[
+        tuple[float, ...], Any, list[float | Any], float]:
     """
     Process the Annotation Data Sets (ADS) in the Envisat product file.
 
@@ -192,10 +192,10 @@ def __process_ads(dsd_buf: bytes, dsd_num: int, dsd_size: int, file_buffer: byte
     -------
     Tuple containing antenna gains, latitudes, longitudes, and the first slant time.
     """
-    lats = []
-    lons = []
+    lats: list[float] = []
+    lons: list[float] = []
     slant_time_first = 0.0
-    antenna_gains = ()
+    antenna_gains: tuple[float, ...] = (0.0,)
     for i in range(dsd_num):
         ads = EnvisatADS(dsd_buf[i * dsd_size:(i + 1) * dsd_size])
         lats_new, lons_new, slant_time_first_new = __process_geolocation_grid_ads(ads, file_buffer, metadata)
@@ -260,7 +260,7 @@ def __process_geolocation_grid_ads(ads: EnvisatADS, file_buffer: bytes, metadata
     return [], [], 0.0
 
 
-def __process_cal_ads(ads: EnvisatADS, gdal_metadata, metadata: dict[Any, Any]) -> tuple[Any, ...]:
+def __process_cal_ads(ads: EnvisatADS, gdal_metadata: dict[str, Any], metadata: dict[Any, Any]) -> tuple[float, ...]:
     """
     Process the EXTERNAL CALIBRATION ADS to extract antenna gain information.
 
@@ -317,7 +317,7 @@ def __process_cal_ads(ads: EnvisatADS, gdal_metadata, metadata: dict[Any, Any]) 
     return antenna_gains
 
 
-def process_sr_gr_ads(ads: EnvisatADS, file_buffer: bytes, metadata: dict[Any, Any]):
+def process_sr_gr_ads(ads: EnvisatADS, file_buffer: bytes, metadata: dict[Any, Any]) -> None:
     """
     Extract SR/GR conversion coefficients from the SR GR ADS.
 
@@ -325,7 +325,7 @@ def process_sr_gr_ads(ads: EnvisatADS, file_buffer: bytes, metadata: dict[Any, A
     ----------
     ads EnvisatADS
     file_buffer File buffer
-    metadata Metadata dictionary to populate
+    metadata Metadata dictionary to populatex
 
     Returns
     -------

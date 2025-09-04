@@ -35,35 +35,36 @@ def get_metadata(gdal_dataset: gdal.Dataset) -> Dict[str, Any]:
     return attributes
 
 
-def open_asar_dataset(filepath: str | os.PathLike[Any] | ReadBuffer[Any] | AbstractDataStore) -> xr.Dataset:
+def open_asar_dataset(filename_or_obj: str | os.PathLike[Any] | ReadBuffer[
+        Any] | bytes | memoryview | AbstractDataStore) -> xr.Dataset:
     """
     Open an ASAR dataset and converts it into an xarray Dataset.
 
     This function reads the metadata and pixel data from the given ASAR dataset file,
     processes the metadata into attributes, and constructs an xarray Dataset.
 
-    :param filepath: The path to the ASAR dataset file. It can be a string,
+    :param filename_or_obj: The path to the ASAR dataset file. It can be a string,
                      a PathLike object, a ReadBuffer, or an AbstractDataStore.
     :return: An xarray Dataset containing the pixel data and metadata attributes.
     :raises NotImplementedError: If the filepath is not a string.
     """
-    if not isinstance(filepath, str):
-        raise NotImplementedError(f'Filepath type {type(filepath)} is not supported')
+    if not isinstance(filename_or_obj, str):
+        raise NotImplementedError(f'Filepath type {type(filename_or_obj)} is not supported')
 
-    logger.debug('Opening ASAR dataset {}', filepath)
+    logger.debug('Opening ASAR dataset {}', filename_or_obj)
 
     # Open the dataset using a custom reader
-    gdal_dataset: gdal.Dataset = reader.get_gdal_dataset(filepath)
+    gdal_dataset: gdal.Dataset = reader.get_gdal_dataset(filename_or_obj)
 
     # Extract metadata attributes
     metadata = get_metadata(gdal_dataset)
 
     # Duplicate, read directly from file, as gdal does not parse some necessary metadata
 
-    metadata["direct_parse"] = envisat_direct.parse_direct(filepath, metadata)
+    metadata["direct_parse"] = envisat_direct.parse_direct(filename_or_obj, metadata)
 
     # Create an xarray Dataset with pixel data and metadata attributes
-    dataset: xr.Dataset = create_dataset(metadata, filepath)
+    dataset: xr.Dataset = create_dataset(metadata, filename_or_obj)
 
     return dataset
 
