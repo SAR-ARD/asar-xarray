@@ -25,7 +25,7 @@ def get_metadata(gdal_dataset: gdal.Dataset) -> Dict[str, Any]:
     :param gdal_dataset: Dataset with metadata
     :return: Dictionary with metadata attributes
     """
-    attributes: dict[str, Any] = dict()
+    attributes: dict[str, Any] = {}
     process_general_metadata(gdal_dataset, attributes)
     process_records_metadata(gdal_dataset, attributes)
     process_derived_subdatasets_metadata(gdal_dataset, attributes)
@@ -113,7 +113,6 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
         "start_time": product_first_line_utc_time,
         "stop_time": product_last_line_utc_time,
         "range_pixel_spacing": metadata["range_spacing"],
-        "azimuth_pixel_spacing": metadata["azimuth_spacing"],
         "radar_frequency": metadata["records"]["main_processing_params"]["radar_freq"] / 1e9,
         "ascending_node_time": "",
         "azimuth_pixel_spacing": metadata["records"]["main_processing_params"]["azimuth_spacing"],
@@ -195,19 +194,17 @@ def get_chirp_parameters(dataset: gdal.Dataset) -> dict[str, Any]:
     :return: dictionary with chirp parameters.
     """
     metadata = dataset.GetMetadata(domain='RECORDS')
-    params: dict[str, Any] = dict()
+    params: dict[str, Any] = {
+        'zero_doppler_time': utils.get_envisat_time(metadata.get('CHIRP_PARAMS_ADS_ZERO_DOPPLER_TIME')),
+        'attach_flag': bool(int(metadata.get('CHIRP_PARAMS_ADS_ATTACH_FLAG', '0'))),
+        'beam_id': metadata.get('CHIRP_PARAMS_ADS_BEAM_ID'), 'polarisation': metadata.get('CHIRP_PARAMS_ADS_POLAR'),
+        'chirp': {}}
     # Non-float values
-    params['zero_doppler_time'] = utils.get_envisat_time(metadata.get('CHIRP_PARAMS_ADS_ZERO_DOPPLER_TIME'))
-    params['attach_flag'] = bool(int(metadata.get('CHIRP_PARAMS_ADS_ATTACH_FLAG', '0')))
-    params['beam_id'] = metadata.get('CHIRP_PARAMS_ADS_BEAM_ID')
-    params['polarisation'] = metadata.get('CHIRP_PARAMS_ADS_POLAR')
-    params['chirp'] = dict()
     for key, value in metadata.items():
         if 'CHIRP_PARAMS_ADS_CHIRP' in key:
             new_key = key.replace('CHIRP_PARAMS_ADS_CHIRP_', '').lower()
             params['chirp'][new_key] = float(value)
 
-    # params['elev_corr_factor'] = float(metadata.get('CHIRP_PARAMS_ADS_ELEV_CORR_FACTOR'))
     params['cal_pulse_info'] = get_chirp_cal_pulse_info(metadata)
 
     return params

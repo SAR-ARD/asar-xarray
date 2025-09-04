@@ -8,40 +8,59 @@ import numpy as np
 
 
 def parse_int(s: str) -> int:
-    """Parse an integer value from a string representation of a field."""
+    """
+    Parse an integer value from a string representation of a field.
+
+    Parameters
+    ----------
+    s String representation of the field, e.g., "FIELD_NAME=<bytes>=value".
+
+    Returns
+    -------
+    Integer value of the field.
+    """
     s = s.replace("<bytes>", "")
     s = s[s.index("=") + 1:]
     # print(s)
     return int(s)
 
 
-
 def calc_distance(latitude, longitude, altitude=0.0):
-    """Lat/Lon to distance from earth center"""
-    DTOR = math.pi / 180.0
-    RTOD = 180 / math.pi
-    A = 6378137.0
-    B = 6356752.3142451794975639665996337
-    FLAT_EARTH_COEF = 1.0 / ((A - B) / A)
-    E2 = 2.0 / FLAT_EARTH_COEF - 1.0 / (FLAT_EARTH_COEF * FLAT_EARTH_COEF)
-    EP2 = E2 / (1 - E2)
+    """
+    Calculate the distance from the Earth's center to a point specified by latitude, longitude, and altitude.
 
-    lat = latitude * DTOR
-    lon = longitude * DTOR
+    Parameters
+    ----------
+    latitude Latitude of the point.
+    longitude Longitude of the point.
+    altitude Altitude of the point above sea level (default is 0.0).
+
+    Returns
+    -------
+    Distance from the Earth's center to the specified point in meters.
+    """
+    dtor = math.pi / 180.0
+    a = 6378137.0
+    b = 6356752.3142451794975639665996337
+    flat_earth_coef = 1.0 / ((a - b) / a)
+    e2 = 2.0 / flat_earth_coef - 1.0 / (flat_earth_coef * flat_earth_coef)
+
+    lat = latitude * dtor
+    lon = longitude * dtor
 
     sin_lat = math.sin(lat)
     cos_lat = math.cos(lat)
 
-    N = (A / math.sqrt(1.0 - E2 * sin_lat * sin_lat))
-    NcosLat = (N + altitude) * cos_lat
+    n = (a / math.sqrt(1.0 - e2 * sin_lat * sin_lat))
+    ncos_lat = (n + altitude) * cos_lat
 
     sin_lon = math.sin(lon)
     cos_lon = math.cos(lon)
 
-    x_pos = NcosLat * cos_lon
-    y_pos = NcosLat * sin_lon
-    z_pos = (N + altitude - E2 * N) * sin_lat
-    return math.sqrt(x_pos**2 + y_pos**2 + z_pos**2)
+    x_pos = ncos_lat * cos_lon
+    y_pos = ncos_lat * sin_lon
+    z_pos = (n + altitude - e2 * n) * sin_lat
+    return math.sqrt(x_pos ** 2 + y_pos ** 2 + z_pos ** 2)
 
 
 class EnvisatADS:
@@ -88,107 +107,19 @@ def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
     dsd_num = 18
     dsd_buf = sph_buf[sph_size - dsd_size * dsd_num:]
 
+    antenna_gains = ()
+    slant_time_first = []
+
     for i in range(dsd_num):
         ads = EnvisatADS(dsd_buf[i * dsd_size:(i + 1) * dsd_size])
-        #print(ads.name)
-        if ads.name == "GEOLOCATION GRID ADS":
-            rec_size = 521
-            assert ((ads.size // ads.num) == rec_size)
-            geoloc_buf = file_buffer[ads.offset:ads.offset + ads.size]
-            middle_idx = ads.num // 2
-            geoloc_record = geoloc_buf[middle_idx * rec_size: (middle_idx + 1) * rec_size]
-            # Geolocation Grid ADSRs header
-            header_size = 12 + 1 + 4 + 4 + 4
+        lats, lons, slant_time_first = process_geolocation_grid_ads(ads, file_buffer, metadata)
 
-            lats_buffer = geoloc_buf[header_size + 11 * 4 * 3 : header_size + 11 * 4 * 4]
-            lons_buffer = geoloc_buf[header_size + 11 * 4 * 4: header_size + 11 * 4 * 5]
+        antenna_gains = process_cal_ads(ads, gdal_metadata, metadata)
 
-
-            lats = list(struct.unpack(">11i", lats_buffer))
-            lons = list(struct.unpack(">11i", lons_buffer))
-            lats = [e * 1e-6 for e in lats]
-            lons = [e * 1e-6 for e in lons]
-
-
-            # tiepoints, 11 of big endian floats for each of the following:
-            # samp numbers, slant range times, angles, lats, longs
-            block_size = 11 * 4
-            slant_time_offset = header_size + 1 * block_size
-            incidence_angle_offset = header_size + 2 * block_size
-            # adjust to middle of 11
-            incidence_angle_offset += 5 * 4
-
-            slant_time_first = struct.unpack(">f", geoloc_record[slant_time_offset:slant_time_offset + 4])[0]
-            incidence_angle_middle = \
-                struct.unpack(">f", geoloc_record[incidence_angle_offset:incidence_angle_offset + 4])[0]
-
-
-
-            metadata["slant_time_first"] = slant_time_first
-            metadata["incidence_angle_center"] = incidence_angle_middle
-
-
-
-        ext_cal_buf = None
-        if ads.name == "EXTERNAL CALIBRATION":
-
-            auxfolder = pathlib.Path(os.path.abspath(__file__)).parent
-            prod_name = gdal_metadata["product"]
-            auxfolder /= "auxiliary"
-            if ".N1" in prod_name:
-                auxfolder /= "ASAR_Auxiliary_Files"
-                auxfolder /= "ASA_XCA_AX"
-            elif ".E1" in prod_name:
-                auxfolder /= "ERS1"
-            elif ".E2" in prod_name:
-                auxfolder /= "ERS2"
-
-            for p in os.scandir(auxfolder):
-                if ads.filename == p.name:
-                    with open(p.path, "rb") as fp:
-                        ext_cal_buf = fp.read()
-                        pol = gdal_metadata["mds1_tx_rx_polar"]
-                        swath = gdal_metadata["swath"]
-                        swath_offset = ord(swath[2]) - ord("1")
-                        pol_offset = {"H/H" : 0, "V/V" :1, "H/V" : 2, "V/H":3}[pol]
-
-                        # Envisat_Product_Spec_Vol8.pdf
-                        # 8.6.2 External Calibration Data
-                        offset = 1247 + 378
-
-                        offset += 12
-                        offset += 4
-                        offset += 26 * 28 + 4 * 4
-
-                        mid_angles = struct.unpack(">7f", ext_cal_buf[offset:offset+4*7])
-
-                        offset += 8 * 4
-
-                        offset += 804 * 4 * swath_offset
-                        offset += 201 * 4 * pol_offset
-
-                        antenna_gains = struct.unpack(">201f", ext_cal_buf[offset:offset + 4 * 201])
-                        metadata["antenna_ref_elev_angle"] = mid_angles[swath_offset]
-
-        if ads.name == "SR GR ADS"  and ads.size > 0:
-            srgr_buf = file_buffer[ads.offset:ads.offset + ads.size]
-
-            r = struct.unpack(">ff5f", srgr_buf[13:41])
-
-            # Envisat file specification says it is SR/GR Conversion ADSR,
-            # however the polynomial is for GR to SR...
-            srgr_coeffs = list(r[2:])
-            metadata["grsr_coeffs"] = srgr_coeffs
-
-
-
-
-    
+        process_sr_gr_ads(ads, file_buffer, metadata)
 
     # antenna gain
-    c = 299792458
     n_samp = gdal_metadata["line_length"]
-
 
     gain_arr = []
     if gdal_metadata["sample_type"] == "DETECTED":
@@ -197,10 +128,9 @@ def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
     else:
         # antenna gain
         c = 299792458
-        R_first = c * slant_time_first * 1e-9 / 2
         range_spacing = c / (2 * gdal_metadata["records"]["main_processing_params"]["range_samp_rate"])
         range_ref = gdal_metadata["records"]["main_processing_params"]["range_ref"]
-        R_first = c * slant_time_first * 1e-9 / 2
+        r_first = c * slant_time_first * 1e-9 / 2
 
         osv = gdal_metadata["records"]["main_processing_params"]["orbit_state_vectors"]
 
@@ -210,52 +140,173 @@ def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
 
         for n in range(n_samp):
             # https://github.com/senbox-org/microwave-toolbox/blob/master/sar-op-calibration/src/main/java/eu/esa/sar/calibration/gpf/calibrators/ASARCalibrator.java
-            R = R_first + n * range_spacing
-            n_geogrid = len(lats)
+            r = r_first + n * range_spacing
             geo_interp_idx = (n / n_samp) * (len(lats) - 1)
             idx = int(geo_interp_idx)
             fract = geo_interp_idx % 1
-            #interpolate geogrid to match first line geogrid to first OSV
-            lat = lats[idx] + (lats[idx+1] - lats[idx]) * fract
-            lon = lons[idx] + (lons[idx+1] - lons[idx]) * fract
+            # interpolate geogrid to match first line geogrid to first OSV
+            lat = lats[idx] + (lats[idx + 1] - lats[idx]) * fract
+            lon = lons[idx] + (lons[idx + 1] - lons[idx]) * fract
 
-            sar_dis = math.sqrt(sat_x**2 + sat_y**2 + sat_z**2)
+            sar_dis = math.sqrt(sat_x ** 2 + sat_y ** 2 + sat_z ** 2)
 
             distance = calc_distance(lat, lon)
 
-            # elevation angle, cosine law from three sides, slant range, earth center to satellite, earth center to target
-            angle_cos = (R * R + sar_dis * sar_dis - distance * distance) / (2 * R * sar_dis)
+            # elevation angle, cosine law from three sides, slant range,
+            # earth center to satellite, earth center to target
+            angle_cos = (r * r + sar_dis * sar_dis - distance * distance) / (2 * r * sar_dis)
             elev_angle = np.rad2deg(math.acos(angle_cos))
 
             # find the gain from LUT, with 201 gains against reference elevation angle with 0.05 degree steps
             elev_idx = int((elev_angle - metadata["antenna_ref_elev_angle"]) / 0.05)
             elev_idx += 100
             gain = 1.0
-            if elev_idx >= 0 and elev_idx <= len(antenna_gains):
+            if 0 <= elev_idx <= len(antenna_gains):
                 # dB -> linear
                 gain = math.pow(10, antenna_gains[elev_idx] / 10)
 
-            gain_arr.append(1/gain)
-
-
-
-
-
+            gain_arr.append(1 / gain)
 
         # calculate spreading loss compensation
-
         spreading_loss = []
         for n in range(n_samp):
-            R = R_first + n * range_spacing
-            factor = math.sqrt((range_ref / R) ** 3)
-            spreading_loss.append(1/factor)
-
-
+            r = r_first + n * range_spacing
+            factor = math.sqrt((range_ref / r) ** 3)
+            spreading_loss.append(1 / factor)
 
     cal_factor = gdal_metadata["records"]["main_processing_params"]["calibration_factors"][0]["ext_cal_fact"]
 
     metadata["cal_factor"] = cal_factor
     metadata["cal_vector"] = np.array(spreading_loss) * np.array(gain_arr)
 
-
     return metadata
+
+
+def process_geolocation_grid_ads(ads: EnvisatADS, file_buffer: bytes, metadata: dict[Any, Any]) -> tuple[
+        Any, list[float | Any], list[float | Any]]:
+    """
+    Process the Geolocation Grid ADS to extract latitude, longitude, slant time, and incidence angle information.
+
+    Parameters
+    ----------
+    ads EnvisatADS
+    file_buffer File buffer
+    metadata Metadata dictionary to populate
+
+    Returns
+    -------
+    Returns a tuple containing lists of latitudes, longitudes, and the first slant time.
+    """
+    if ads.name == "GEOLOCATION GRID ADS":
+        rec_size = 521
+        assert ((ads.size // ads.num) == rec_size)
+        geoloc_buf = file_buffer[ads.offset:ads.offset + ads.size]
+        middle_idx = ads.num // 2
+        geoloc_record = geoloc_buf[middle_idx * rec_size: (middle_idx + 1) * rec_size]
+        # Geolocation Grid ADSRs header
+        header_size = 12 + 1 + 4 + 4 + 4
+
+        lats_buffer = geoloc_buf[header_size + 11 * 4 * 3: header_size + 11 * 4 * 4]
+        lons_buffer = geoloc_buf[header_size + 11 * 4 * 4: header_size + 11 * 4 * 5]
+
+        lats = list(struct.unpack(">11i", lats_buffer))
+        lons = list(struct.unpack(">11i", lons_buffer))
+        lats = [e * 1e-6 for e in lats]
+        lons = [e * 1e-6 for e in lons]
+
+        # tiepoints, 11 of big endian floats for each of the following:
+        # samp numbers, slant range times, angles, lats, longs
+        block_size = 11 * 4
+        slant_time_offset = header_size + 1 * block_size
+        incidence_angle_offset = header_size + 2 * block_size
+        # adjust to middle of 11
+        incidence_angle_offset += 5 * 4
+
+        slant_time_first = struct.unpack(">f", geoloc_record[slant_time_offset:slant_time_offset + 4])[0]
+        incidence_angle_middle = \
+            struct.unpack(">f", geoloc_record[incidence_angle_offset:incidence_angle_offset + 4])[0]
+
+        metadata["slant_time_first"] = slant_time_first
+        metadata["incidence_angle_center"] = incidence_angle_middle
+    return lats, lons, slant_time_first
+
+
+def process_cal_ads(ads: EnvisatADS, gdal_metadata, metadata: dict[Any, Any]) -> tuple[Any, ...]:
+    """
+    Process the EXTERNAL CALIBRATION ADS to extract antenna gain information.
+
+    Parameters
+    ----------
+    ads EnvisatADS
+    gdal_metadata Metadata extracted using GDAL
+    metadata Metadata dictionary to populate
+
+    Returns
+    -------
+    Tuple containing antenna gains.
+    """
+    if ads.name == "EXTERNAL CALIBRATION":
+
+        aux_folder = pathlib.Path(os.path.abspath(__file__)).parent
+        prod_name = gdal_metadata["product"]
+        aux_folder /= "auxiliary"
+        if ".N1" in prod_name:
+            aux_folder /= "ASAR_Auxiliary_Files"
+            aux_folder /= "ASA_XCA_AX"
+        elif ".E1" in prod_name:
+            aux_folder /= "ERS1"
+        elif ".E2" in prod_name:
+            aux_folder /= "ERS2"
+
+        for p in os.scandir(aux_folder):
+            if ads.filename == p.name:
+                with open(p.path, "rb") as fp:
+                    ext_cal_buf = fp.read()
+                    pol = gdal_metadata["mds1_tx_rx_polar"]
+                    swath = gdal_metadata["swath"]
+                    swath_offset = ord(swath[2]) - ord("1")
+                    pol_offset = {"H/H": 0, "V/V": 1, "H/V": 2, "V/H": 3}[pol]
+
+                    # Envisat_Product_Spec_Vol8.pdf
+                    # 8.6.2 External Calibration Data
+                    offset = 1247 + 378
+
+                    offset += 12
+                    offset += 4
+                    offset += 26 * 28 + 4 * 4
+
+                    mid_angles = struct.unpack(">7f", ext_cal_buf[offset:offset + 4 * 7])
+
+                    offset += 8 * 4
+
+                    offset += 804 * 4 * swath_offset
+                    offset += 201 * 4 * pol_offset
+
+                    antenna_gains = struct.unpack(">201f", ext_cal_buf[offset:offset + 4 * 201])
+                    metadata["antenna_ref_elev_angle"] = mid_angles[swath_offset]
+    return antenna_gains
+
+
+def process_sr_gr_ads(ads: EnvisatADS, file_buffer: bytes, metadata: dict[Any, Any]):
+    """
+    Extract SR/GR conversion coefficients from the SR GR ADS.
+
+    Parameters
+    ----------
+    ads EnvisatADS
+    file_buffer File buffer
+    metadata Metadata dictionary to populate
+
+    Returns
+    -------
+    None
+    """
+    if ads.name == "SR GR ADS" and ads.size > 0:
+        srgr_buf = file_buffer[ads.offset:ads.offset + ads.size]
+
+        r = struct.unpack(">ff5f", srgr_buf[13:41])
+
+        # Envisat file specification says it is SR/GR Conversion ADSR,
+        # however the polynomial is for GR to SR...
+        srgr_coeffs = list(r[2:])
+        metadata["grsr_coeffs"] = srgr_coeffs
