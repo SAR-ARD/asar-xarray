@@ -1,6 +1,27 @@
 # CHANGELOG
 
 
+## v1.4.2 (2025-09-04)
+
+### Bug Fixes
+
+- Fix issue with improper geolocation of IMP products.
+  ([#51](https://github.com/Achaad/asar-xarray/pull/51),
+  [`d665c9a`](https://github.com/Achaad/asar-xarray/commit/d665c9af44481b5d250a0720d3b42e6330abaca6))
+
+* Fix issue with improper geolocation of IMP products.
+
+Fix antenna gain with IMS mode.
+
+* style: extract code into auxiliary functions
+
+* style: added missing type hints
+
+---------
+
+Co-authored-by: Achaad <achaad@achaad.eu>
+
+
 ## v1.4.1 (2025-09-04)
 
 ### Bug Fixes

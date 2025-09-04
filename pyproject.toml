@@ -1,6 +1,6 @@
 [project]
 name = 'asar_xarray'
-version = "v1.4.1"
+version = "v1.4.2"
 description = 'Synthetic Aperture Radar (SAR) Level-1 python mapper of ERS/ASAR products.'
 authors = [
     { name = 'Anton Perepelenko', email = 'anton.perepelenko@cgi.com' },
