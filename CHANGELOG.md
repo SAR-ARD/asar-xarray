@@ -1,6 +1,24 @@
 # CHANGELOG
 
 
+## v1.4.1 (2025-09-04)
+
+### Bug Fixes
+
+- Minor changes to clone on windows ([#48](https://github.com/Achaad/asar-xarray/pull/48),
+  [`2ab7611`](https://github.com/Achaad/asar-xarray/commit/2ab7611d1c81a0397d0c04a7013de499008b304c))
+
+* renamed 'ASAR Aux file list.txt' to 'ASAR_Aux_file_list.txt'
+
+* changed encoding from CRLF to LF
+
+* renamed folder aux to auxiliary (to be compliant with windows)
+
+* [pyproject.toml] fixed typo
+
+* [envisat_direct] updated path to auxiliary files
+
+
 ## v1.4.0 (2025-07-10)
 
 ### Continuous Integration
