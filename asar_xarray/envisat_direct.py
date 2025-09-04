@@ -134,7 +134,7 @@ def parse_direct(path: str, gdal_metadata) -> dict[str, Any]:
 
             auxfolder = pathlib.Path(os.path.abspath(__file__)).parent
             prod_name = gdal_metadata["product"]
-            auxfolder /= "aux"
+            auxfolder /= "auxiliary"
             if ".N1" in prod_name:
                 auxfolder /= "ASAR_Auxiliary_Files"
                 auxfolder /= "ASA_XCA_AX"
