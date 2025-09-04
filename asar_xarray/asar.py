@@ -36,7 +36,8 @@ def get_metadata(gdal_dataset: gdal.Dataset) -> Dict[str, Any]:
 
 
 def open_asar_dataset(filename_or_obj: str | os.PathLike[Any] | ReadBuffer[
-        Any] | bytes | memoryview | AbstractDataStore) -> xr.Dataset:
+        Any] | bytes | memoryview | AbstractDataStore,
+                      polarization: str | None = None) -> xr.Dataset:
     """
     Open an ASAR dataset and converts it into an xarray Dataset.
 
@@ -45,6 +46,7 @@ def open_asar_dataset(filename_or_obj: str | os.PathLike[Any] | ReadBuffer[
 
     :param filename_or_obj: The path to the ASAR dataset file. It can be a string,
                      a PathLike object, a ReadBuffer, or an AbstractDataStore.
+    :param polarization: AP mode polarization
     :return: An xarray Dataset containing the pixel data and metadata attributes.
     :raises NotImplementedError: If the filepath is not a string.
     """
@@ -59,9 +61,40 @@ def open_asar_dataset(filename_or_obj: str | os.PathLike[Any] | ReadBuffer[
     # Extract metadata attributes
     metadata = get_metadata(gdal_dataset)
 
-    # Duplicate, read directly from file, as gdal does not parse some necessary metadata
+    product_str = metadata["sph_descriptor"]
 
-    metadata["direct_parse"] = envisat_direct.parse_direct(filename_or_obj, metadata)
+    if product_str == "Image Mode SLC Image" or product_str == "AP Mode SLC Image":
+        metadata["product_type"] = "SLC"
+    elif product_str == "Image Mode Precision Image" or product_str == "AP Mode Precision Image":
+        metadata["product_type"] = "GRD"
+    else:
+        raise RuntimeError(
+            "Product \"{}\" not supported, only Image mode files supported(IMS & IMP) supported for now".format(
+                product_str))
+
+    pol1 = metadata["mds1_tx_rx_polar"]
+    pol2 = metadata["mds2_tx_rx_polar"]
+    metadata["polarization_idx"] = 0
+    if "AP Mode" in product_str:
+        if polarization is None:
+            raise RuntimeError("Polarization must be set for AP Mode")
+
+        if polarization == pol1:
+            metadata["polarization_idx"] = 0
+        elif polarization == pol2:
+            metadata["polarization_idx"] = 1
+        else:
+            raise RuntimeError("Argument polarization is {} - MDS1 = {} MDS2 = {}".format(polarization, pol1, pol2))
+    else:
+        if polarization is None:
+            polarization = pol1
+        else:
+            if polarization != pol1:
+                raise RuntimeError("Argument polarization is {} - MDS1 = {}".format(polarization, pol1))
+
+    metadata["txrx_polarization"] = polarization
+    # Duplicate, read directly from file, as gdal does not parse some necessary metadata
+    metadata["direct_parse"] = envisat_direct.parse_direct(filename_or_obj, metadata, polarization)
 
     # Create an xarray Dataset with pixel data and metadata attributes
     dataset: xr.Dataset = create_dataset(metadata, filename_or_obj)
@@ -78,6 +111,8 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
 
     :param metadata: Dictionary containing ASAR product metadata.
     :param filepath: Path to the ASAR dataset file.
+    :param filepath: Path to the ASAR dataset file.
+    :param polarization: AP mode polarization
     :return: An xarray Dataset with pixel data, coordinates, and attributes.
     """
     number_of_samples = metadata["line_length"]
@@ -94,12 +129,14 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
 
     product_str = metadata["sph_descriptor"]
 
-    if product_str == "Image Mode SLC Image":
+    if product_str == "Image Mode SLC Image" or product_str == "AP Mode SLC Image":
         product_type = "SLC"
-    elif product_str == "Image Mode Precision Image":
+    elif product_str == "Image Mode Precision Image" or product_str == "AP Mode Precision Image":
         product_type = "GRD"
     else:
-        raise RuntimeError("Only Image mode files supported(IMS & IMP) supported for now")
+        raise RuntimeError(
+            "Product \"{}\" not supported, only Image mode files supported(IMS & IMP) supported for now".format(
+                product_str))
 
     attrs = {
         "family_name": "Envisat",
@@ -109,14 +146,13 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
         "orbit_number": metadata["abs_orbit"],
         "relative_orbit_number": metadata["rel_orbit"],
         "pass": metadata["pass"],
-        "transmitter_receiver_polarisations": metadata["mds1_tx_rx_polar"],
-        "product_type": product_type,
+        "transmitter_receiver_polarisations": metadata["txrx_polarization"],
+        "product_type": metadata["product_type"],
         "start_time": product_first_line_utc_time,
         "stop_time": product_last_line_utc_time,
         "range_pixel_spacing": metadata["range_spacing"],
         "radar_frequency": metadata["records"]["main_processing_params"]["radar_freq"] / 1e9,
         "ascending_node_time": "",
-        "azimuth_pixel_spacing": metadata["records"]["main_processing_params"]["azimuth_spacing"],
         "product_first_line_utc_time": product_first_line_utc_time,
         "product_last_line_utc_time": product_last_line_utc_time,
         "azimuth_time_interval": azimuth_time_interval,
@@ -175,8 +211,14 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
         coords["slant_range_time"] = ("pixel", slant_range_times)
 
     data = xr.open_dataarray(filepath, engine='rasterio')
+
+    if len(data.data) == 1:
+
+        data = data.squeeze("band").drop_vars(["band", "spatial_ref"])
+    elif len(data.data) == 2:
+        data = xr.DataArray(data=data.data[metadata["polarization_idx"]], dims=["y", "x"])
+
     data.encoding.clear()
-    data = data.squeeze("band").drop_vars(["band", "spatial_ref"])
     data = data.rename({"y": "line", "x": "pixel"})
     data = data.assign_coords(coords)
     data = data.swap_dims(swap_dims)

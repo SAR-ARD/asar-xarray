@@ -16,7 +16,7 @@ class AsarBackend(xr.backends.common.BackendEntrypoint):
     def open_dataset(self,
                      filename_or_obj: str | os.PathLike[Any] | ReadBuffer[Any] | bytes | memoryview | AbstractDataStore,
                      *,
-                     drop_variables: str | Iterable[str] | None = None, ) -> xr.Dataset:
+                     drop_variables: str | Iterable[str] | None = None, polarization: str | None = None) -> xr.Dataset:
         """
         Open an ASAR dataset and return it as an xarray Dataset.
 
@@ -28,7 +28,8 @@ class AsarBackend(xr.backends.common.BackendEntrypoint):
                                 representing the dataset to open.
         :param drop_variables: Optional; a variable or list of variables to exclude
                                from the dataset.
+        :param polarization: Optional; specify the polarization to load (e.g., 'HH', 'HV', 'VV', 'VH').
         :return: An xarray Dataset containing the opened ASAR data.
         """
-        dataset = asar.open_asar_dataset(filename_or_obj)
+        dataset = asar.open_asar_dataset(filename_or_obj, polarization=polarization)
         return dataset
