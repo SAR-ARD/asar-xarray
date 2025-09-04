@@ -28,8 +28,8 @@ class AsarBackend(xr.backends.common.BackendEntrypoint):
                                 representing the dataset to open.
         :param drop_variables: Optional; a variable or list of variables to exclude
                                from the dataset.
+        :param polarization: Optional; specify the polarization to load (e.g., 'HH', 'HV', 'VV', 'VH').
         :return: An xarray Dataset containing the opened ASAR data.
         """
-
         dataset = asar.open_asar_dataset(filename_or_obj, polarization=polarization)
         return dataset
