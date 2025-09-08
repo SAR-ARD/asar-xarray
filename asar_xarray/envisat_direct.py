@@ -161,12 +161,17 @@ def parse_direct(path: str, gdal_metadata: dict[str, Any], polarization: str) ->
         gain_arr = np.array(gain_list)
 
         # calculate spreading loss compensation
+
+        spread_loss_power = 3.0
+        if "APS" in gdal_metadata["product"]:
+            spread_loss_power = 4.0
         for n in range(n_samp):
             r = r_first + n * range_spacing
-            factor = math.sqrt((range_ref / r) ** 3)
+            factor = math.pow((range_ref / r), spread_loss_power)
             spreading_loss = np.append(spreading_loss, 1 / factor)
 
-    cal_factor = gdal_metadata["records"]["main_processing_params"]["calibration_factors"][0]["ext_cal_fact"]
+    factor_offset = gdal_metadata["polarization_idx"]
+    cal_factor = gdal_metadata["records"]["main_processing_params"]["calibration_factors"][factor_offset]["ext_cal_fact"]
 
     metadata["cal_factor"] = cal_factor
     metadata["cal_vector"] = np.array(spreading_loss) * np.array(gain_arr)
