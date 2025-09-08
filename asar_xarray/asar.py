@@ -159,6 +159,7 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
         "image_slant_range_time": image_slant_range_time,
         "range_sampling_rate": range_sampling_rate,
         "incidence_angle_mid_swath": metadata["direct_parse"]["incidence_angle_center"] * 2 * math.pi / 360,
+        "azimuth_pixel_spacing": metadata["records"]["main_processing_params"]["azimuth_spacing"],
         "metadata": metadata
     }
 
