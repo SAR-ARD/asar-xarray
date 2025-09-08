@@ -114,7 +114,6 @@ def parse_direct(path: str, gdal_metadata: dict[str, Any], polarization: str) ->
     # antenna gain
     n_samp = gdal_metadata["line_length"]
     spreading_loss: np.ndarray[Any] = np.array([])
-    gain_arr: np.ndarray[Any] = np.array([])
     if gdal_metadata["sample_type"] == "DETECTED":
         gain_arr = np.ones(n_samp)
         spreading_loss = np.ones(n_samp)
@@ -130,7 +129,7 @@ def parse_direct(path: str, gdal_metadata: dict[str, Any], polarization: str) ->
         sat_x = osv[0]["x_pos_1"] * 1e-2
         sat_y = osv[0]["y_pos_1"] * 1e-2
         sat_z = osv[0]["z_pos_1"] * 1e-2
-
+        gain_list: list[float] = []
         for n in range(n_samp):
             # https://github.com/senbox-org/microwave-toolbox/blob/master/sar-op-calibration/src/main/java/eu/esa/sar/calibration/gpf/calibrators/ASARCalibrator.java
             r = r_first + n * range_spacing
@@ -158,15 +157,22 @@ def parse_direct(path: str, gdal_metadata: dict[str, Any], polarization: str) ->
                 # dB -> linear
                 gain = math.pow(10, antenna_gains[elev_idx] / 10)
 
-            np.append(gain_arr, 1 / gain)
+            gain_list.append(1 / gain)
+        gain_arr = np.array(gain_list)
 
         # calculate spreading loss compensation
+
+        spread_loss_power = 3.0
+        if "APS" in gdal_metadata["product"]:
+            spread_loss_power = 4.0
         for n in range(n_samp):
             r = r_first + n * range_spacing
-            factor = math.sqrt((range_ref / r) ** 3)
-            np.append(spreading_loss, 1 / factor)
+            factor = math.pow((range_ref / r), spread_loss_power)
+            spreading_loss = np.append(spreading_loss, 1 / factor)
 
-    cal_factor = gdal_metadata["records"]["main_processing_params"]["calibration_factors"][0]["ext_cal_fact"]
+    factor_offset = gdal_metadata["polarization_idx"]
+    cal_factor = gdal_metadata["records"]["main_processing_params"]["calibration_factors"][factor_offset][
+        "ext_cal_fact"]
 
     metadata["cal_factor"] = cal_factor
     metadata["cal_vector"] = np.array(spreading_loss) * np.array(gain_arr)
