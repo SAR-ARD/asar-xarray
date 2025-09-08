@@ -171,7 +171,8 @@ def parse_direct(path: str, gdal_metadata: dict[str, Any], polarization: str) ->
             spreading_loss = np.append(spreading_loss, 1 / factor)
 
     factor_offset = gdal_metadata["polarization_idx"]
-    cal_factor = gdal_metadata["records"]["main_processing_params"]["calibration_factors"][factor_offset]["ext_cal_fact"]
+    cal_factor = gdal_metadata["records"]["main_processing_params"]["calibration_factors"][factor_offset][
+        "ext_cal_fact"]
 
     metadata["cal_factor"] = cal_factor
     metadata["cal_vector"] = np.array(spreading_loss) * np.array(gain_arr)
