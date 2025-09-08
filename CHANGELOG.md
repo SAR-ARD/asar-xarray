@@ -1,6 +1,25 @@
 # CHANGELOG
 
 
+## v1.5.1 (2025-09-08)
+
+### Bug Fixes
+
+- Fix calibration metadata not being parsed correctly
+  ([#53](https://github.com/Achaad/asar-xarray/pull/53),
+  [`2c703b1`](https://github.com/Achaad/asar-xarray/commit/2c703b146521b9d06f8cf531821909cc2b3ce20e))
+
+* fix: fixed an error in calibration metadata extraction
+
+* Fix APS scaling and missing AP mode scaling factor index usage.
+
+---------
+
+Co-authored-by: Achaad <achaad@achaad.eu>
+
+Co-authored-by: Priit Pender <priit@alloca.ee>
+
+
 ## v1.5.0 (2025-09-04)
 
 ### Features
