@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v1.5.2 (2025-09-08)
+
+### Bug Fixes
+
+- Missing azimuth_pixel_spacing
+  ([`093f006`](https://github.com/Achaad/asar-xarray/commit/093f006d298415b47c673160b89a048fada99110))
+
+
 ## v1.5.1 (2025-09-08)
 
 ### Bug Fixes
