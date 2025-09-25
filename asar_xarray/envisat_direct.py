@@ -5,6 +5,7 @@ import os
 import math
 import pathlib
 import numpy as np
+from numpy.typing import NDArray
 
 
 def parse_int(s: str) -> int:
@@ -113,7 +114,7 @@ def parse_direct(path: str, gdal_metadata: dict[str, Any], polarization: str) ->
 
     # antenna gain
     n_samp = gdal_metadata["line_length"]
-    spreading_loss: np.ndarray[Any] = np.array([])
+    spreading_loss: NDArray[Any] = np.array([])
     if gdal_metadata["sample_type"] == "DETECTED":
         gain_arr = np.ones(n_samp)
         spreading_loss = np.ones(n_samp)
