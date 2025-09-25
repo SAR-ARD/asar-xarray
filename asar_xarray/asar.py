@@ -297,7 +297,7 @@ def compute_azimuth_time(
         product_first_line_utc_time: np.datetime64,
         product_last_line_utc_time: np.datetime64,
         number_of_lines: int
-) -> NDArray:
+) -> NDArray[Any]:
     """
     Compute an array of azimuth times for each line in the ASAR product.
 
