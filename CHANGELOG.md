@@ -1,6 +1,16 @@
 # CHANGELOG
 
 
+## v1.5.3 (2025-09-25)
+
+### Bug Fixes
+
+- Decrease numpy version ([#55](https://github.com/Achaad/asar-xarray/pull/55),
+  [`7c2ee15`](https://github.com/Achaad/asar-xarray/commit/7c2ee15472a9a4dc8d85c569f1c2b1b38d89b78f))
+
+* Decrease numpy version to <2.0 * Fix typing after version change
+
+
 ## v1.5.2 (2025-09-08)
 
 ### Bug Fixes
