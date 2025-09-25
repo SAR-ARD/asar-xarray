@@ -35,9 +35,108 @@ def get_metadata(gdal_dataset: gdal.Dataset) -> Dict[str, Any]:
     return attributes
 
 
+def create_wss_dataset(metadata: dict[str, Any], signal_data) -> xr.Dataset:
+    """
+    Create an xarray Dataset from ASAR metadata and file path.
+
+    This function constructs the coordinates, attributes, and data variables
+    for an ASAR product, using the provided metadata and file path.
+
+    :param metadata: Dictionary containing ASAR product metadata.
+    :param filepath: Path to the ASAR dataset file.
+    :param filepath: Path to the ASAR dataset file.
+    :param polarization: AP mode polarization
+    :return: An xarray Dataset with pixel data, coordinates, and attributes.
+    """
+    number_of_samples = metadata["line_length"]
+    product_first_line_utc_time = metadata["first_line_time"]
+    product_last_line_utc_time = metadata["last_line_time"]
+
+    number_of_lines = metadata["num_output_lines"]
+    azimuth_time_interval = metadata["line_time_interval"]
+
+    range_sampling_rate = metadata["range_samp_rate"]
+    image_slant_range_time = metadata["slant_time_first"] * 1e-9
+
+
+    product_str = metadata["sph_descriptor"]
+
+    if product_str == "Wide Swath SLC Image":
+        product_type = "SLC"
+    else:
+        raise RuntimeError(
+            "Product \"{}\" not supported, only Image mode files supported(IMS & IMP) supported for now".format(
+                product_str))
+
+    attrs = {
+        "family_name": "Envisat",
+        "number": 1,
+        "mode": 1,
+        "swaths": metadata["swath"],
+        #"orbit_number": metadata["abs_orbit"],
+        #"relative_orbit_number": metadata["rel_orbit"],
+        #"pass": metadata["pass"],
+        "transmitter_receiver_polarisations": metadata["txrx_polarization"],
+        "product_type": metadata["product_type"],
+        "start_time": product_first_line_utc_time,
+        "stop_time": product_last_line_utc_time,
+        "range_pixel_spacing": metadata["range_spacing"],
+        "radar_frequency": metadata["radar_freq"] / 1e9,
+        "ascending_node_time": "",
+        "product_first_line_utc_time": product_first_line_utc_time,
+        "product_last_line_utc_time": product_last_line_utc_time,
+        "azimuth_time_interval": azimuth_time_interval,
+        "image_slant_range_time": image_slant_range_time,
+        "range_sampling_rate": range_sampling_rate,
+        "incidence_angle_mid_swath": metadata["incidence_angle_center"] * 2 * math.pi / 360,
+        "azimuth_pixel_spacing": metadata["azimuth_spacing"],
+        "metadata": metadata
+    }
+
+    azimuth_time = compute_azimuth_time(
+        product_first_line_utc_time, product_last_line_utc_time, number_of_lines
+    )
+
+    swap_dims = {"line": "azimuth_time", "pixel": "slant_range_time"}
+
+    coords: dict[str, Any] = {
+        "pixel": np.arange(0, number_of_samples, dtype=int),
+        "line": np.arange(0, number_of_lines, dtype=int),
+        # set "units" explicitly as CF conventions don't support "nanoseconds".
+        # See: https://github.com/pydata/xarray/issues/4183#issuecomment-685200043
+        "azimuth_time": (
+            "line",
+            azimuth_time,
+            {},
+            {"units": f"microseconds since {azimuth_time[0]}"},
+        ),
+    }
+
+    if product_type == "SLC":
+        slant_range_time = np.linspace(
+            image_slant_range_time,
+            image_slant_range_time + (number_of_samples - 1) / range_sampling_rate,
+            number_of_samples,
+        )
+        coords["slant_range_time"] = ("pixel", slant_range_time)
+
+
+    data = xr.DataArray(data=signal_data, dims=["y", "x"])
+
+    data.encoding.clear()
+    data = data.rename({"y": "line", "x": "pixel"})
+    data = data.assign_coords(coords)
+    data = data.swap_dims(swap_dims)
+
+    data.attrs.update(attrs)
+    data.encoding.update({})
+
+    return xr.Dataset(attrs=attrs, data_vars={"measurements": data})
+
+
 def open_asar_dataset(filename_or_obj: str | os.PathLike[Any] | ReadBuffer[
         Any] | bytes | memoryview | AbstractDataStore,
-                      polarization: str | None = None) -> xr.Dataset:
+                      polarization: str | None = None, wideswath: str | None = "SS1") -> xr.Dataset:
     """
     Open an ASAR dataset and converts it into an xarray Dataset.
 
@@ -54,6 +153,14 @@ def open_asar_dataset(filename_or_obj: str | os.PathLike[Any] | ReadBuffer[
         raise NotImplementedError(f'Filepath type {type(filename_or_obj)} is not supported')
 
     logger.debug('Opening ASAR dataset {}', filename_or_obj)
+
+
+
+    if wideswath:
+        wss_meta, wss_data = envisat_direct.parse_wss(filename_or_obj, wideswath)
+        if wss_data and wss_meta:
+            return create_wss_dataset(wss_meta, wss_data)
+
 
     # Open the dataset using a custom reader
     gdal_dataset: gdal.Dataset = reader.get_gdal_dataset(filename_or_obj)

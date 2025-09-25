@@ -6,6 +6,8 @@ import math
 import pathlib
 import numpy as np
 
+from asar_xarray import utils
+
 
 def parse_int(s: str) -> int:
     """
@@ -78,7 +80,211 @@ class EnvisatADS:
 
     def __str__(self) -> str:
         """Return a string representation of the ADS descriptor."""
-        return "Envisat ADS: \"{}\" {} {} {}".format(self.name, self.offset, self.size, self.num)
+        return "Envisat ADS: \"{}\" offset = {}  sz = {}  num = {}".format(self.name, self.offset, self.size, self.num)
+
+
+
+def read_f32(buf, offset):
+    return struct.unpack(">f", buf[offset:offset+4])[0]
+def read_i32(buf, offset):
+    return struct.unpack(">i", buf[offset:offset+4])[0]
+
+def read_mjd(buf, offset):
+    return struct.unpack(">iii", buf[offset:offset+12])
+
+def read_mjd_dt(buf, offset):
+    mjd = read_mjd(buf, offset)
+    return utils.get_envisat_time("{},{},{}".format(mjd[0], mjd[1], mjd[2]))
+
+def parse_wss(path: str, subswath: str) -> dict[str, Any]:
+
+
+
+    ss_str = subswath
+    ss_idx = ord(subswath[2]) - ord('1')
+    fp = open(path, "rb")
+    mph = fp.read(1247).decode("ascii")
+    mph_arr = mph.split("\n")
+
+    sph_size = 6099
+    sph_buf = fp.read(sph_size)
+
+    sph_arr = sph_buf.decode("ascii").split("\n")
+
+    metadata = {}
+
+
+    metadata["sph_descriptor"] = sph_arr[0].replace("SPH_DESCRIPTOR=", "").replace("\"","").strip()
+    metadata["swath"] = ss_str
+    metadata["product_type"] = "SLC"
+
+
+    #TODO
+    metadata["txrx_polarization"] = "VV"
+
+
+    if "PRODUCT=" not in mph_arr[0] or "WSS" not in mph_arr[0]:
+        return None, None
+
+
+
+
+    dsd_size = 280
+    dsd_num = 18
+    dsd_buf = sph_buf[sph_size - dsd_size * dsd_num:]
+
+    data_ds_name = ["MDS1", "MDS2", "MDS3", "MDS4", "MDS5"][ss_idx]
+
+    for i in range(dsd_num):
+        ads = EnvisatADS(dsd_buf[i * dsd_size:(i + 1) * dsd_size])
+
+        print(ads.name)
+
+        if ads.name == "MAIN PROCESSING PARAMS ADS":
+            mpp_sz = 10069
+
+            assert(ads.size == 5 * mpp_sz)
+            fp.seek(ads.offset + ss_idx * 5)
+            mpp_buf = fp.read(mpp_sz)
+
+
+            metadata["range_spacing"] = read_f32(mpp_buf, 44)
+            metadata["azimuth_spacing"] = read_f32(mpp_buf, 48)
+            metadata["line_time_interval"] = read_f32(mpp_buf, 52)
+            metadata["range_samp_rate"] = read_f32(mpp_buf,983)
+            metadata["radar_freq"] = read_f32(mpp_buf, 987)
+
+            metadata["records"] = {}
+            metadata["records"]["main_processing_params"] = {}
+            metadata["records"]["main_processing_params"]["orbit_state_vectors"] = {}
+
+            metadata["direct_parse"] = {"cal_factor":  read_f32(mpp_buf, 1381)}
+
+            osv_arr = []
+            osv_offset = 1765
+            for i in range(5):
+                ts = read_mjd_dt(mpp_buf, osv_offset)
+                md = {
+                    "state_vect_time_1" : ts,
+                    "x_pos_1" : read_i32(mpp_buf, osv_offset+12),
+                    "y_pos_1" : read_i32(mpp_buf, osv_offset+16),
+                    "z_pos_1": read_i32(mpp_buf, osv_offset +20),
+                    "x_vel_1": read_i32(mpp_buf, osv_offset + 24),
+                    "y_vel_1": read_i32(mpp_buf, osv_offset + 28),
+                    "z_vel_1": read_i32(mpp_buf, osv_offset + 32),
+                }
+                osv_offset += 12 + 6 * 4
+                osv_arr.append(md)
+
+            metadata["records"]["main_processing_params"]["orbit_state_vectors"] = osv_arr
+
+
+
+        if ads.name == "GEOLOCATION GRID ADS":
+
+            geogrid_offset = ads.offset + ss_idx * (ads.num / 5) * 521
+            fp.seek(int(geogrid_offset))
+            geoloc_buf = fp.read(521)
+
+            header_size = 12 + 1 + 4 + 4 + 4
+
+            lats_buffer = geoloc_buf[header_size + 11 * 4 * 3: header_size + 11 * 4 * 4]
+            lons_buffer = geoloc_buf[header_size + 11 * 4 * 4: header_size + 11 * 4 * 5]
+
+            lats = list(struct.unpack(">11i", lats_buffer))
+            lons = list(struct.unpack(">11i", lons_buffer))
+            lats = [e * 1e-6 for e in lats]
+            lons = [e * 1e-6 for e in lons]
+
+            # tiepoints, 11 of big endian floats for each of the following:
+            # samp numbers, slant range times, angles, lats, longs
+            block_size = 11 * 4
+            slant_time_offset = header_size + 1 * block_size
+            incidence_angle_offset = header_size + 2 * block_size
+            # adjust to middle of 11
+            incidence_angle_offset += 5 * 4
+
+            slant_time_first = struct.unpack(">f", geoloc_buf[slant_time_offset:slant_time_offset + 4])[0]
+            incidence_angle_middle = \
+                struct.unpack(">f", geoloc_buf[incidence_angle_offset:incidence_angle_offset + 4])[0]
+
+            metadata["slant_time_first"] = slant_time_first
+            metadata["incidence_angle_center"] = incidence_angle_middle
+
+
+
+        if ads.name.strip() == data_ds_name:
+            #print(ads)
+            fp.seek(ads.offset)
+            data_buffer = fp.read(ads.size)
+            n_lines = ads.num
+            line_sz = int(ads.size / ads.num)
+
+            data_time_arr = []
+
+            for i in range(n_lines):
+                mdsr_line = data_buffer[i*line_sz:(i+1)*line_sz]
+                header = mdsr_line[0:17]
+
+                mjd = struct.unpack(">iii", header[0:12])
+                ts = utils.get_envisat_time("{},{},{}".format(mjd[0], mjd[1], mjd[2]))
+
+
+                #print(mjd_arr)
+                #print(struct.unpack(">i", header[13:]))
+                data = mdsr_line[17:]
+
+                # Big endian complex int16 -> complex float32...
+                # is there a better way than this?
+                data_i16 = np.frombuffer(data, dtype=">i2")
+                row_buf = data_i16.astype(np.float32).tobytes()
+                data_cf32 = np.frombuffer(row_buf, dtype=np.complex64)
+                data_time_arr.append((ts, data_cf32))
+
+            data_time_arr.sort(key = lambda x:x[0])
+            cnt = 0
+            dup = 0
+            prev = 0
+            max_idx = 0
+            max_val = 0
+
+            final_dat = []
+            for i in range(len(data_time_arr) - 1):
+                if data_time_arr[i][0] != prev:
+                    if i != 0:
+                        final_dat.append(data_time_arr[max_idx][1])
+                    max_val = np.sum(np.abs(data_time_arr[i][1]))
+                    max_idx = i
+                    cnt += 1
+                else:
+                    sum_tmp = np.sum(np.abs(data_time_arr[i][1]))
+                    if sum_tmp > max_val:
+                        max_idx = i
+                        max_val = sum_tmp
+                    dup += 1
+                prev = data_time_arr[i][0]
+
+
+            metadata["first_line_time"] = data_time_arr[0][0]
+            metadata["last_line_time"] = data_time_arr[-1][0]
+            metadata["line_length"] = len(data_time_arr[0][1])
+            metadata["num_output_lines"] = len(final_dat)
+
+            #TODO
+            metadata["direct_parse"]["cal_vector"] = np.ones(metadata["line_length"])
+
+
+
+    print("WSS meta = {}".format(metadata))
+
+
+    return metadata, final_dat
+
+
+
+
+
+
 
 
 def parse_direct(path: str, gdal_metadata: dict[str, Any], polarization: str) -> dict[str, Any]:
