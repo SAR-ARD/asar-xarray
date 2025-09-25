@@ -12,6 +12,7 @@ from xarray.backends import AbstractDataStore
 from xarray.core.types import ReadBuffer
 from asar_xarray import reader, utils, envisat_direct
 from loguru import logger
+from numpy.typing import NDArray
 
 from asar_xarray.derived_subdatasets_metadata import process_derived_subdatasets_metadata
 from asar_xarray.general_metadata import process_general_metadata
@@ -36,7 +37,7 @@ def get_metadata(gdal_dataset: gdal.Dataset) -> Dict[str, Any]:
 
 
 def open_asar_dataset(filename_or_obj: str | os.PathLike[Any] | ReadBuffer[
-        Any] | bytes | memoryview | AbstractDataStore,
+    Any] | bytes | memoryview | AbstractDataStore,
                       polarization: str | None = None) -> xr.Dataset:
     """
     Open an ASAR dataset and converts it into an xarray Dataset.
@@ -296,7 +297,7 @@ def compute_azimuth_time(
         product_first_line_utc_time: np.datetime64,
         product_last_line_utc_time: np.datetime64,
         number_of_lines: int
-) -> np.ndarray:
+) -> NDArray[Any]:
     """
     Compute an array of azimuth times for each line in the ASAR product.
 
