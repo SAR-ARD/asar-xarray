@@ -52,8 +52,8 @@ requires = ['setuptools']
 build-backend = 'setuptools.build_meta'
 
 [tool.semantic_release]
-version_source = "master"
-branch = "master"
+version_source = "main"
+branch = "main"
 tag_format = "v{version}"
 version_toml = ["pyproject.toml:project.version:tf"]
 upload_to_pypi = true
