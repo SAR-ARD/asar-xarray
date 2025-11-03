@@ -25,7 +25,7 @@ dependencies = [
     'xarray>=2025.1.0',
     'requests>=2.32.0',
     'gdal>=3.10.0',
-    'numpy>=2.2.0',
+    'numpy<2.0',
     'boto3>=1.37.0',
     'boto3-stubs>=1.37.0',
     'loguru>=0.7.0'
@@ -52,8 +52,8 @@ requires = ['setuptools']
 build-backend = 'setuptools.build_meta'
 
 [tool.semantic_release]
-version_source = "master"
-branch = "master"
+version_source = "main"
+branch = "main"
 tag_format = "v{version}"
 version_toml = ["pyproject.toml:project.version:tf"]
 upload_to_pypi = true
