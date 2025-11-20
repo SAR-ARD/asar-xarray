@@ -66,7 +66,7 @@ def open_asar_dataset(filename_or_obj: str | os.PathLike[Any] | ReadBuffer[
 
     if product_str == "Image Mode SLC Image" or product_str == "AP Mode SLC Image":
         metadata["product_type"] = "SLC"
-    elif product_str == "Image Mode Precision Image" or product_str == "AP Mode Precision Image":
+    elif product_str == "Image Mode Precision Image" or product_str == "AP Mode Precision Image"  or product_str == "Wide Swath Mode Image":
         metadata["product_type"] = "GRD"
     else:
         raise RuntimeError(
@@ -132,7 +132,7 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
 
     if product_str == "Image Mode SLC Image" or product_str == "AP Mode SLC Image":
         product_type = "SLC"
-    elif product_str == "Image Mode Precision Image" or product_str == "AP Mode Precision Image":
+    elif product_str == "Image Mode Precision Image" or product_str == "AP Mode Precision Image" or product_str == "Wide Swath Mode Image":
         product_type = "GRD"
     else:
         raise RuntimeError(
@@ -201,16 +201,23 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
             number_of_samples,
         )
 
-        # numpy polyval expects the polynomial top be highest ranked first
-        coeffs = list(reversed(metadata["direct_parse"]["grsr_coeffs"]))
+        grsr_arr = metadata["direct_parse"]["grsr_coeffs"]
+        if len(grsr_arr) == 1:
 
-        slant_ranges = np.polyval(coeffs, ground_range)
-        slant_ranges *= 2
+            # handle 1 GRSR Poly vs N GRSR Poly cases differently,
+            # numpy polyval expects the polynomial top be highest ranked first
 
-        c = 299792458
-        slant_range_times = slant_ranges / c
+            coeffs = list(reversed(grsr_arr[0]["grsr_poly_coeffs"]))
 
-        coords["slant_range_time"] = ("pixel", slant_range_times)
+            slant_ranges = np.polyval(coeffs, ground_range)
+            slant_ranges *= 2
+
+            c = 299792458
+            slant_range_times = slant_ranges / c
+
+            coords["slant_range_time"] = ("pixel", slant_range_times)
+        else:
+            coords["ground_range"] = ("pixel", ground_range)
 
     data = xr.open_dataarray(filepath, engine='rasterio')
 

@@ -5,6 +5,7 @@ import os
 import math
 import pathlib
 import numpy as np
+from asar_xarray import utils
 from numpy.typing import NDArray
 
 
@@ -171,6 +172,8 @@ def parse_direct(path: str, gdal_metadata: dict[str, Any], polarization: str) ->
             factor = math.pow((range_ref / r), spread_loss_power)
             spreading_loss = np.append(spreading_loss, 1 / factor)
 
+
+
     factor_offset = gdal_metadata["polarization_idx"]
     cal_factor = gdal_metadata["records"]["main_processing_params"]["calibration_factors"][factor_offset][
         "ext_cal_fact"]
@@ -286,6 +289,10 @@ def __process_cal_ads(ads: EnvisatADS, gdal_metadata: dict[str, Any], metadata: 
     Tuple containing antenna gains.
     """
     antenna_gains = ()
+
+    if gdal_metadata["records"]["main_processing_params"]["ant_elev_corr_flag"]:
+        return antenna_gains
+
     if ads.name == "EXTERNAL CALIBRATION":
 
         aux_folder = pathlib.Path(os.path.abspath(__file__)).parent
@@ -342,11 +349,30 @@ def process_sr_gr_ads(ads: EnvisatADS, file_buffer: bytes, metadata: dict[Any, A
     None
     """
     if ads.name == "SR GR ADS" and ads.size > 0:
-        srgr_buf = file_buffer[ads.offset:ads.offset + ads.size]
-
-        r = struct.unpack(">ff5f", srgr_buf[13:41])
 
         # Envisat file specification says it is SR/GR Conversion ADSR,
         # however the polynomial is for GR to SR...
-        srgr_coeffs = list(r[2:])
-        metadata["grsr_coeffs"] = srgr_coeffs
+        srgr_buf = file_buffer[ads.offset:ads.offset + ads.size]
+        grsr_coeffs = []
+        for i in range(ads.num):
+
+            one_srgr = srgr_buf[i*55:i*55 + 41]
+
+            r = struct.unpack(">iiicff5f", one_srgr)
+
+            srgr_el: dict[str, Any] = {}
+
+            mjd_str = [str(k) for k in r[0:3]]
+            mjd_str = ",".join(mjd_str)
+
+            srgr_el["azimuth_time"] = utils.get_envisat_time(mjd_str)
+            srgr_el["slr0"] = r[4]
+            srgr_el["gr0"] = r[5]
+            srgr_el["grsr_poly_coeffs"] = r[6:]
+            grsr_coeffs.append(srgr_el)
+
+        metadata["grsr_coeffs"] = grsr_coeffs
+
+
+
+
