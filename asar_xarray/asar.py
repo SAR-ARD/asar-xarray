@@ -21,15 +21,13 @@ from asar_xarray.records_metadata import process_records_metadata
 
 def create_srgr_dataset(grsr_poly_coeffs: List[Dict[str, Any]], gr_arr: NDArray[Any]) -> xr.Dataset:
     """
-    Build SRGR polynomials from GRSR polynomials of the Envisat file format to mimic
-    sarsen Sentinel1 GRD handling
+    Build SRGR polynomials from GRSR polynomials of the Envisat file format to mimic sarsen Sentinel1 GRD handling.
 
     :param grsr_poly_coeffs: grsr polynomial metadata (List of dicts)
     :param gr_arr: ground range array of the source product
 
     :return: xarray Dataset for srgr polynomial interpolation
     """
-
     coords: dict[str, Any] = {}
 
     # TODO may need improvement, see https://github.com/SAR-ARD/asar-xarray/issues/58
@@ -37,7 +35,7 @@ def create_srgr_dataset(grsr_poly_coeffs: List[Dict[str, Any]], gr_arr: NDArray[
     degree = 10
     coords["degree"] = degree
 
-    srgr_coeffs: List[np.ndarray] = []
+    srgr_coeffs: List[NDArray[Any]] = []
 
     azimuth_time_raw: List[Any] = []
 
