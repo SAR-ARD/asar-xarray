@@ -207,9 +207,10 @@ def process_calibration_factors(metadata: dict[str, str]) -> list[dict[str, Any]
 
     for key, value in metadata.items():
 
-        if not "CALIBRATION_FACTORS" in key:
+        if "CALIBRATION_FACTORS" not in key:
             continue
-        #if not key.startswith('MAIN_PROCESSING_PARAMS_ADS_CALIBRATION_FACTORS') or not key.startswith('MAIN_PROCESSING_PARAMS_ADS_0_CALIBRATION_FACTORS'):
+        # if not key.startswith('MAIN_PROCESSING_PARAMS_ADS_CALIBRATION_FACTORS')
+        # or not key.startswith('MAIN_PROCESSING_PARAMS_ADS_0_CALIBRATION_FACTORS'):
         #    continue
 
         # Split key into parts to get index and parameter name
@@ -473,9 +474,6 @@ def process_general_main_processing_params(metadata: dict[str, str]) -> dict[str
     if sum_num_output_lines > 0:
         processed["num_output_lines"] = sum_num_output_lines
 
-
-
-
     return processed
 
 
@@ -521,7 +519,6 @@ def process_dop_centroid_coeffs(metadata: dict[str, str]) -> dict[str, Any]:
     :return: Dictionary containing doppler centroid parameters
     """
     dop_dict: dict[str, Any] = {}
-
 
     for key, value in metadata.items():
         if not key.startswith('DOP_CENTROID_COEFFS_ADS_'):

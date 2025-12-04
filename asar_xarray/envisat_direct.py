@@ -172,8 +172,6 @@ def parse_direct(path: str, gdal_metadata: dict[str, Any], polarization: str) ->
             factor = math.pow((range_ref / r), spread_loss_power)
             spreading_loss = np.append(spreading_loss, 1 / factor)
 
-
-
     factor_offset = gdal_metadata["polarization_idx"]
     cal_factor = gdal_metadata["records"]["main_processing_params"]["calibration_factors"][factor_offset][
         "ext_cal_fact"]
@@ -355,8 +353,7 @@ def process_sr_gr_ads(ads: EnvisatADS, file_buffer: bytes, metadata: dict[Any, A
         srgr_buf = file_buffer[ads.offset:ads.offset + ads.size]
         grsr_coeffs = []
         for i in range(ads.num):
-
-            one_srgr = srgr_buf[i*55:i*55 + 41]
+            one_srgr = srgr_buf[i * 55:i * 55 + 41]
 
             r = struct.unpack(">iiicff5f", one_srgr)
 
@@ -372,7 +369,3 @@ def process_sr_gr_ads(ads: EnvisatADS, file_buffer: bytes, metadata: dict[Any, A
             grsr_coeffs.append(srgr_el)
 
         metadata["grsr_coeffs"] = grsr_coeffs
-
-
-
-

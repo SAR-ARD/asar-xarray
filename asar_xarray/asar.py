@@ -105,7 +105,8 @@ def open_asar_dataset(filename_or_obj: str | os.PathLike[Any] | ReadBuffer[
 
     if product_str == "Image Mode SLC Image" or product_str == "AP Mode SLC Image":
         metadata["product_type"] = "SLC"
-    elif product_str == "Image Mode Precision Image" or product_str == "AP Mode Precision Image" or product_str == "Wide Swath Mode Image":
+    elif (product_str == "Image Mode Precision Image" or product_str == "AP Mode Precision Image"
+          or product_str == "Wide Swath Mode Image"):
         metadata["product_type"] = "GRD"
     else:
         raise RuntimeError(
@@ -171,7 +172,8 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
 
     if product_str == "Image Mode SLC Image" or product_str == "AP Mode SLC Image":
         product_type = "SLC"
-    elif product_str == "Image Mode Precision Image" or product_str == "AP Mode Precision Image" or product_str == "Wide Swath Mode Image":
+    elif (product_str == "Image Mode Precision Image" or product_str == "AP Mode Precision Image"
+          or product_str == "Wide Swath Mode Image"):
         product_type = "GRD"
     else:
         raise RuntimeError(
