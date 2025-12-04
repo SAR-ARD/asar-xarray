@@ -1,7 +1,7 @@
 """ASAR Xarray Dataset Reader."""
 
 import os
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 import pandas as pd
 import xarray as xr
@@ -19,15 +19,15 @@ from asar_xarray.general_metadata import process_general_metadata
 from asar_xarray.records_metadata import process_records_metadata
 
 
-def create_srgr_dataset(grsr_poly_coeffs: dict[str, Any], gr_arr: list[float]) -> xr.Dataset:
+def create_srgr_dataset(grsr_poly_coeffs: List[Dict[str, Any]], gr_arr: NDArray[Any]) -> xr.Dataset:
     """
     Build SRGR polynomials from GRSR polynomials of the Envisat file format to mimic
     sarsen Sentinel1 GRD handling
 
-    :param grsr_poly_coeffs: grsr polynomial metadata
+    :param grsr_poly_coeffs: grsr polynomial metadata (List of dicts)
     :param gr_arr: ground range array of the source product
 
-    :return: xarray Datset for srgr polynomial interpolation
+    :return: xarray Dataset for srgr polynomial interpolation
     """
 
     coords: dict[str, Any] = {}
@@ -36,24 +36,23 @@ def create_srgr_dataset(grsr_poly_coeffs: dict[str, Any], gr_arr: list[float]) -
 
     degree = 10
     coords["degree"] = degree
-    srgr_coeffs: list[list[float]] = []
-    azimuth_time: list[np.datetime64] = []
+
+    srgr_coeffs: List[np.ndarray] = []
+
+    azimuth_time_raw: List[Any] = []
 
     for el in grsr_poly_coeffs:
         grsr_poly = np.array(list(reversed(el["grsr_poly_coeffs"])))
-        azimuth_time.append(el["azimuth_time"])
+        azimuth_time_raw.append(el["azimuth_time"])
         slant_range = np.polyval(grsr_poly, gr_arr)
 
         srgr_poly = np.polyfit(slant_range[::150], gr_arr[::150], deg=degree)
 
-        # eval_gr = np.polyval(srgr_poly, slant_range)
-        # diff = gr_arr - eval_gr
-        # print(diff)
-
         srgr_coeffs.append(np.array(list(reversed(srgr_poly))))
 
-    coords["azimuth_time"] = [np.datetime64(dt, "ns") for dt in azimuth_time]
+    coords["azimuth_time"] = [np.datetime64(dt, "ns") for dt in azimuth_time_raw]
     coords["degree"] = list(range(degree + 1))
+
     data_vars: dict[str, Any] = {"srgrCoefficients": (("azimuth_time", "degree"), srgr_coeffs)}
 
     return xr.Dataset(data_vars=data_vars, coords=coords)

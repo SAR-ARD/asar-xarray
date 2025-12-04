@@ -362,8 +362,8 @@ def process_sr_gr_ads(ads: EnvisatADS, file_buffer: bytes, metadata: dict[Any, A
 
             srgr_el: dict[str, Any] = {}
 
-            mjd_str = [str(k) for k in r[0:3]]
-            mjd_str = ",".join(mjd_str)
+            mjd_arr = [str(k) for k in r[0:3]]
+            mjd_str = ",".join(mjd_arr)
 
             srgr_el["azimuth_time"] = utils.get_envisat_time(mjd_str)
             srgr_el["slr0"] = r[4]
