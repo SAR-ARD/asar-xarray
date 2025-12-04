@@ -1,7 +1,7 @@
 """ASAR Xarray Dataset Reader."""
 
 import os
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 import pandas as pd
 import xarray as xr
@@ -17,6 +17,43 @@ from numpy.typing import NDArray
 from asar_xarray.derived_subdatasets_metadata import process_derived_subdatasets_metadata
 from asar_xarray.general_metadata import process_general_metadata
 from asar_xarray.records_metadata import process_records_metadata
+
+
+def create_srgr_dataset(grsr_poly_coeffs: List[Dict[str, Any]], gr_arr: NDArray[Any]) -> xr.Dataset:
+    """
+    Build SRGR polynomials from GRSR polynomials of the Envisat file format to mimic sarsen Sentinel1 GRD handling.
+
+    :param grsr_poly_coeffs: grsr polynomial metadata (List of dicts)
+    :param gr_arr: ground range array of the source product
+
+    :return: xarray Dataset for srgr polynomial interpolation
+    """
+    coords: dict[str, Any] = {}
+
+    # TODO may need improvement, see https://github.com/SAR-ARD/asar-xarray/issues/58
+
+    degree = 10
+    coords["degree"] = degree
+
+    srgr_coeffs: List[NDArray[Any]] = []
+
+    azimuth_time_raw: List[Any] = []
+
+    for el in grsr_poly_coeffs:
+        grsr_poly = np.array(list(reversed(el["grsr_poly_coeffs"])))
+        azimuth_time_raw.append(el["azimuth_time"])
+        slant_range = np.polyval(grsr_poly, gr_arr)
+
+        srgr_poly = np.polyfit(slant_range[::150], gr_arr[::150], deg=degree)
+
+        srgr_coeffs.append(np.array(list(reversed(srgr_poly))))
+
+    coords["azimuth_time"] = [np.datetime64(dt, "ns") for dt in azimuth_time_raw]
+    coords["degree"] = list(range(degree + 1))
+
+    data_vars: dict[str, Any] = {"srgrCoefficients": (("azimuth_time", "degree"), srgr_coeffs)}
+
+    return xr.Dataset(data_vars=data_vars, coords=coords)
 
 
 def get_metadata(gdal_dataset: gdal.Dataset) -> Dict[str, Any]:
@@ -66,7 +103,8 @@ def open_asar_dataset(filename_or_obj: str | os.PathLike[Any] | ReadBuffer[
 
     if product_str == "Image Mode SLC Image" or product_str == "AP Mode SLC Image":
         metadata["product_type"] = "SLC"
-    elif product_str == "Image Mode Precision Image" or product_str == "AP Mode Precision Image":
+    elif (product_str == "Image Mode Precision Image" or product_str == "AP Mode Precision Image"
+          or product_str == "Wide Swath Mode Image"):
         metadata["product_type"] = "GRD"
     else:
         raise RuntimeError(
@@ -132,7 +170,8 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
 
     if product_str == "Image Mode SLC Image" or product_str == "AP Mode SLC Image":
         product_type = "SLC"
-    elif product_str == "Image Mode Precision Image" or product_str == "AP Mode Precision Image":
+    elif (product_str == "Image Mode Precision Image" or product_str == "AP Mode Precision Image"
+          or product_str == "Wide Swath Mode Image"):
         product_type = "GRD"
     else:
         raise RuntimeError(
@@ -201,16 +240,25 @@ def create_dataset(metadata: dict[str, Any], filepath: str) -> xr.Dataset:
             number_of_samples,
         )
 
-        # numpy polyval expects the polynomial top be highest ranked first
-        coeffs = list(reversed(metadata["direct_parse"]["grsr_coeffs"]))
+        grsr_arr = metadata["direct_parse"]["grsr_coeffs"]
+        if len(grsr_arr) == 1:
 
-        slant_ranges = np.polyval(coeffs, ground_range)
-        slant_ranges *= 2
+            # handle 1 GRSR Poly vs N GRSR Poly cases differently,
+            # numpy polyval expects the polynomial top be highest ranked first
 
-        c = 299792458
-        slant_range_times = slant_ranges / c
+            coeffs = list(reversed(grsr_arr[0]["grsr_poly_coeffs"]))
 
-        coords["slant_range_time"] = ("pixel", slant_range_times)
+            slant_ranges = np.polyval(coeffs, ground_range)
+            slant_ranges *= 2
+
+            c = 299792458
+            slant_range_times = slant_ranges / c
+
+            coords["slant_range_time"] = ("pixel", slant_range_times)
+        else:
+            swap_dims["pixel"] = "ground_range"
+            attrs["srgr_conversion"] = create_srgr_dataset(metadata["direct_parse"]["grsr_coeffs"], ground_range)
+            coords["ground_range"] = ("pixel", ground_range)
 
     data = xr.open_dataarray(filepath, engine='rasterio')
 

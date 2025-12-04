@@ -206,8 +206,12 @@ def process_calibration_factors(metadata: dict[str, str]) -> list[dict[str, Any]
     calib_dict: dict[int, dict[str, Any]] = {}
 
     for key, value in metadata.items():
-        if not key.startswith('MAIN_PROCESSING_PARAMS_ADS_CALIBRATION_FACTORS'):
+
+        if "CALIBRATION_FACTORS" not in key:
             continue
+        # if not key.startswith('MAIN_PROCESSING_PARAMS_ADS_CALIBRATION_FACTORS')
+        # or not key.startswith('MAIN_PROCESSING_PARAMS_ADS_0_CALIBRATION_FACTORS'):
+        #    continue
 
         # Split key into parts to get index and parameter name
         parts = key.split('.')
@@ -451,6 +455,25 @@ def process_general_main_processing_params(metadata: dict[str, str]) -> dict[str
             )
             processed[new_key] = parsed if parsed is not None else value
 
+    # Reuse 0_ tagged metadata for WSM mode
+    sum_num_output_lines = 0
+    keys = processed.keys()
+    for k in keys:
+        if "_num_output_lines" in k:
+            sum_num_output_lines += processed[k]
+    if "0_range_samp_rate" in keys:
+        processed["range_samp_rate"] = processed["0_range_samp_rate"]
+    if "0_range_spacing" in keys:
+        processed["range_spacing"] = processed["0_range_spacing"]
+    if "0_radar_freq" in keys:
+        processed["radar_freq"] = processed["0_radar_freq"]
+    if "0_azimuth_spacing" in keys:
+        processed["azimuth_spacing"] = processed["0_azimuth_spacing"]
+    if "0_ant_elev_corr_flag" in keys:
+        processed["ant_elev_corr_flag"] = processed["0_ant_elev_corr_flag"]
+    if sum_num_output_lines > 0:
+        processed["num_output_lines"] = sum_num_output_lines
+
     return processed
 
 
@@ -505,13 +528,13 @@ def process_dop_centroid_coeffs(metadata: dict[str, str]) -> dict[str, Any]:
         param = key[24:].lower()
 
         # Process different parameter types
-        if param == 'zero_doppler_time':
+        if 'zero_doppler_time' in param:
             dop_dict[param] = utils.get_envisat_time(value)
-        elif param == 'attach_flag':
+        elif 'attach_flag' in param:
             dop_dict[param] = bool(int(value))
-        elif param == 'dop_conf_below_thresh_flag':
+        elif 'dop_conf_below_thresh_flag' in param:
             dop_dict[param] = bool(int(value))
-        elif param in ('dop_coef', 'delta_dopp_coeff'):
+        elif "dop_coef" in param or "delta_dopp_coeff" in param:
             # Keep all values including zeros for coefficients
             dop_dict[param] = [float(x) for x in value.strip().split()]
         else:
